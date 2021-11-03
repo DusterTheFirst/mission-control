@@ -4,8 +4,8 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-eframe = { version = "0.15", default-features = false, features = [
-    "default_fonts",
-    "egui_glow",
-] }
+iced = { version = "0.3", features = ["async-std", "canvas"] }
+async-std = "1.10"
+plotters = "0.3"
+plotters-iced = "0.1"
 wmidi = "4.0"
