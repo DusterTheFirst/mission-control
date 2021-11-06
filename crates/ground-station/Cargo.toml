@@ -4,8 +4,9 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-iced = { version = "0.3", features = ["async-std", "glow_canvas", "glow"] }
+iced = { version = "0.3", features = ["async-std", "glow_canvas", "glow"], default-features = false }
 iced_native = "0.4"
 async-std = "1.10"
 plotters = "0.3"
+plotters-backend = "0.3"
 plotters-iced = "0.1"

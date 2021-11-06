@@ -5,7 +5,7 @@ pub struct ControlCluster;
 impl container::StyleSheet for ControlCluster {
     fn style(&self) -> container::Style {
         container::Style {
-            border_color: colors::BORDER,
+            border_color: colors::BORDER.into(),
             border_width: 1.0,
             border_radius: 10.0,
             background: colors::SURFACE.into(),
@@ -17,7 +17,7 @@ impl container::StyleSheet for ControlCluster {
 impl button::StyleSheet for ControlCluster {
     fn active(&self) -> button::Style {
         button::Style {
-            text_color: colors::TEXT,
+            text_color: colors::TEXT.into(),
             background: colors::ACTIVE.into(),
             border_radius: 3.0,
             ..Default::default()
@@ -27,7 +27,7 @@ impl button::StyleSheet for ControlCluster {
     fn hovered(&self) -> button::Style {
         button::Style {
             background: colors::HOVERED.into(),
-            text_color: colors::TEXT,
+            text_color: colors::TEXT.into(),
             ..self.active()
         }
     }
@@ -35,7 +35,7 @@ impl button::StyleSheet for ControlCluster {
     fn pressed(&self) -> button::Style {
         button::Style {
             border_width: 1.0,
-            border_color: colors::TEXT,
+            border_color: colors::TEXT.into(),
             ..self.hovered()
         }
     }
@@ -46,7 +46,7 @@ pub struct Instrument;
 impl container::StyleSheet for Instrument {
     fn style(&self) -> container::Style {
         container::Style {
-            border_color: colors::BORDER,
+            border_color: colors::BORDER.into(),
             border_width: 1.0,
             border_radius: 10.0,
             background: colors::SURFACE.into(),
@@ -56,47 +56,55 @@ impl container::StyleSheet for Instrument {
 }
 
 pub mod colors {
-    use iced::Color;
+    pub const TEXT: Color = Color::from_rgb(0xEE, 0xEE, 0xEE);
+    pub const BORDER: Color = Color::from_rgb(0x25, 0x25, 0x25);
+    pub const SURFACE: Color = Color::from_rgb(0x1C, 0x1C, 0x1C);
+    pub const BACKGROUND: Color = Color::from_rgb(0x16, 0x16, 0x16);
+    pub const ACCENT: Color = Color::from_rgb(0x6F, 0xFF, 0xE9);
+    pub const ACTIVE: Color = Color::from_rgb(0x72, 0x89, 0xDA);
+    pub const HOVERED: Color = Color::from_rgb(0x67, 0x7B, 0xC4);
 
-    pub const TEXT: Color = Color::from_rgb(
-        0xEE as f32 / 255.0,
-        0xEE as f32 / 255.0,
-        0xEE as f32 / 255.0,
-    );
+    pub const GRID_LINES: Color = Color::from_rgb(0x45, 0x45, 0x45);
+    pub const AXIS: Color = Color::from_rgb(0xEE, 0xEE, 0xEE);
 
-    pub const BORDER: Color = Color::from_rgb(
-        0x25 as f32 / 255.0,
-        0x25 as f32 / 255.0,
-        0x25 as f32 / 255.0,
-    );
 
-    pub const SURFACE: Color = Color::from_rgb(
-        0x1C as f32 / 255.0,
-        0x1C as f32 / 255.0,
-        0x1C as f32 / 255.0,
-    );
+    pub struct Color {
+        r: u8,
+        g: u8,
+        b: u8,
+    }
 
-    pub const BACKGROUND: Color = Color::from_rgb(
-        0x16 as f32 / 255.0,
-        0x16 as f32 / 255.0,
-        0x16 as f32 / 255.0,
-    );
+    impl Color {
+        pub const fn from_rgb(r: u8, g: u8, b: u8) -> Self {
+            Self { r, g, b }
+        }
+    }
 
-    pub const ACCENT: Color = Color::from_rgb(
-        0x6F as f32 / 255.0,
-        0xFF as f32 / 255.0,
-        0xE9 as f32 / 255.0,
-    );
+    impl From<Color> for iced::Color {
+        fn from(Color { r, g, b }: Color) -> Self {
+            iced::Color::from_rgb8(r, g, b)
+        }
+    }
 
-    pub const ACTIVE: Color = Color::from_rgb(
-        0x72 as f32 / 255.0,
-        0x89 as f32 / 255.0,
-        0xDA as f32 / 255.0,
-    );
+    impl From<Color> for Option<iced::Color> {
+        fn from(color: Color) -> Self {
+            Some(iced::Color::from(color))
+        }
+    }
 
-    pub const HOVERED: Color = Color::from_rgb(
-        0x67 as f32 / 255.0,
-        0x7B as f32 / 255.0,
-        0xC4 as f32 / 255.0,
-    );
+    impl From<Color> for Option<iced::Background> {
+        fn from(color: Color) -> Self {
+            Some(iced::Background::Color(iced::Color::from(color)))
+        }
+    }
+
+    impl plotters_backend::BackendStyle for Color {
+        fn color(&self) -> plotters_backend::BackendColor {
+            plotters_backend::BackendColor {
+                alpha: 1.0,
+                rgb: (self.r, self.g, self.b),
+            }
+        }
+    }
+    impl plotters::style::Color for Color {}
 }
