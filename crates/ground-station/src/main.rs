@@ -1,29 +1,22 @@
 use chart::MyChart;
-use chart_container::create_chart;
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
     widget,
     window::{self, Mode},
-    Application, Button, Clipboard, Color, Command, Element, HorizontalAlignment, Length, Settings,
-    Subscription, Text,
+    Align, Application, Button, Clipboard, Color, Command, Container, Element, HorizontalAlignment,
+    Length, Settings, Subscription, Text,
 };
 use iced_native::{event, subscription, Event};
-
-use crate::style::ControlCluster;
+use plotters_iced::{Chart, ChartWidget};
 
 mod chart;
-mod chart_container;
 mod style;
 
 pub fn main() -> iced::Result {
     InstrumentCluster::run(Settings {
         antialiasing: true,
         exit_on_close_request: true,
-        window: window::Settings {
-            min_size: Some((800, 760)),
-            ..Default::default()
-        },
         ..Default::default()
     })
 }
@@ -182,99 +175,108 @@ impl Application for InstrumentCluster {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        widget::Row::new()
+        widget::Column::new()
             .width(Length::Fill)
             .height(Length::Fill)
+            .spacing(10)
+            .padding(10)
             .push(
-                widget::Column::new()
+                widget::Row::new()
                     .width(Length::Fill)
                     .height(Length::Fill)
+                    .spacing(10)
                     .push(widget::Space::new(Length::Fill, Length::Fill))
-                    .push(create_chart(&mut self.charts.c01))
-                    .push(create_chart(&mut self.charts.c02))
-                    .push(create_chart(&mut self.charts.c03))
-                    .push(create_chart(&mut self.charts.c04)),
-            )
-            .push(
-                widget::Column::new()
-                    .width(Length::Fill)
-                    .height(Length::Fill)
                     .push(create_chart(&mut self.charts.c10))
-                    .push(widget::Space::new(Length::Fill, Length::FillPortion(4))),
-            )
-            .push(
-                widget::Column::new()
-                    .width(Length::Fill)
-                    .height(Length::Fill)
                     .push(create_chart(&mut self.charts.c20))
-                    .push(widget::Space::new(Length::Fill, Length::Fill))
-                    .push(
-                        widget::Container::new(
-                            widget::Column::new()
-                                .push(
-                                    widget::Text::new("Control Cluster")
-                                        .size(32)
-                                        .horizontal_alignment(HorizontalAlignment::Center)
-                                        .width(Length::Fill),
-                                )
-                                .push(widget::Space::new(Length::Fill, Length::Fill))
-                                .push(
-                                    widget::Text::new(format!(
-                                        "Window Size: {:?}",
-                                        self.window_size
-                                    ))
-                                    .horizontal_alignment(HorizontalAlignment::Center)
-                                    .width(Length::Fill),
-                                )
-                                .push(
-                                    widget::Text::new(format!("Focused: {}", self.window_focused))
-                                        .horizontal_alignment(HorizontalAlignment::Center)
-                                        .width(Length::Fill),
-                                )
-                                .push(
-                                    widget::Row::new()
-                                        .push(
-                                            Button::new(
-                                                &mut self.fullscreen_button,
-                                                Text::new(match self.window_mode {
-                                                    Mode::Windowed => "Fullscreen",
-                                                    Mode::Fullscreen => "Windowed",
-                                                }),
-                                            )
-                                            .on_press(Message::ToggleFullscreen)
-                                            .style(ControlCluster),
-                                        )
-                                        .push(widget::Space::new(Length::Fill, Length::Shrink))
-                                        .push(
-                                            Button::new(&mut self.quit_button, Text::new("Quit"))
-                                                .on_press(Message::Quit)
-                                                .style(ControlCluster),
-                                        ),
-                                ),
-                        )
-                        .width(Length::Fill)
-                        .height(Length::FillPortion(2))
-                        .padding(10)
-                        .style(ControlCluster),
-                    )
+                    .push(create_chart(&mut self.charts.c30))
                     .push(widget::Space::new(Length::Fill, Length::Fill)),
             )
             .push(
-                widget::Column::new()
+                widget::Row::new()
                     .width(Length::Fill)
-                    .height(Length::Fill)
-                    .push(create_chart(&mut self.charts.c30))
-                    .push(widget::Space::new(Length::Fill, Length::FillPortion(4))),
-            )
-            .push(
-                widget::Column::new()
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .push(widget::Space::new(Length::Fill, Length::Fill))
-                    .push(create_chart(&mut self.charts.c41))
-                    .push(create_chart(&mut self.charts.c42))
-                    .push(create_chart(&mut self.charts.c43))
-                    .push(create_chart(&mut self.charts.c44)),
+                    .height(Length::FillPortion(4))
+                    .spacing(10)
+                    .push(
+                        widget::Column::new()
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(10)
+                            .push(create_chart(&mut self.charts.c01))
+                            .push(create_chart(&mut self.charts.c02))
+                            .push(create_chart(&mut self.charts.c03))
+                            .push(create_chart(&mut self.charts.c04)),
+                    )
+                    .push(
+                        widget::Container::new(
+                            widget::Container::new(
+                                widget::Column::new()
+                                    .push(
+                                        widget::Text::new("Control Cluster")
+                                            .size(32)
+                                            .horizontal_alignment(HorizontalAlignment::Center),
+                                    )
+                                    .push(
+                                        widget::Text::new(format!(
+                                            "Window Size: {:?}",
+                                            self.window_size
+                                        ))
+                                        .horizontal_alignment(HorizontalAlignment::Center),
+                                    )
+                                    .push(
+                                        widget::Text::new(format!(
+                                            "Focused: {}",
+                                            self.window_focused
+                                        ))
+                                        .horizontal_alignment(HorizontalAlignment::Center),
+                                    )
+                                    .push(
+                                        widget::Row::new()
+                                            .push(
+                                                Button::new(
+                                                    &mut self.fullscreen_button,
+                                                    Text::new(match self.window_mode {
+                                                        Mode::Windowed => "Fullscreen",
+                                                        Mode::Fullscreen => "Windowed",
+                                                    }),
+                                                )
+                                                .on_press(Message::ToggleFullscreen)
+                                                .style(style::ControlCluster),
+                                            )
+                                            .push(
+                                                Button::new(
+                                                    &mut self.quit_button,
+                                                    Text::new("Quit"),
+                                                )
+                                                .on_press(Message::Quit)
+                                                .style(style::ControlCluster),
+                                            )
+                                            .spacing(50),
+                                    )
+                                    .spacing(10)
+                                    .align_items(Align::Center)
+                                    .width(Length::Shrink)
+                                    .height(Length::Shrink),
+                            )
+                            .padding(10)
+                            .style(style::ControlCluster)
+                            .width(Length::Shrink)
+                            .height(Length::Shrink),
+                        )
+                        .width(Length::FillPortion(3))
+                        .height(Length::Fill)
+                        .center_x()
+                        .center_y(),
+                    )
+                    .push(
+                        widget::Column::new()
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .spacing(10)
+                            .push(create_chart(&mut self.charts.c41))
+                            .push(create_chart(&mut self.charts.c42))
+                            .push(create_chart(&mut self.charts.c43))
+                            .push(create_chart(&mut self.charts.c44)),
+                    ),
             )
             .into()
     }
@@ -286,4 +288,17 @@ impl Application for InstrumentCluster {
     fn should_exit(&self) -> bool {
         self.quit
     }
+}
+
+pub fn create_chart<'chart, Message: 'chart>(
+    chart: &'chart mut impl Chart<Message>,
+) -> Container<'chart, Message> {
+    Container::new(
+        ChartWidget::new(chart)
+            .width(Length::Fill)
+            .height(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .style(style::Instrument)
 }

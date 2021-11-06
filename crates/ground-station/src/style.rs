@@ -41,6 +41,20 @@ impl button::StyleSheet for ControlCluster {
     }
 }
 
+pub struct Instrument;
+
+impl container::StyleSheet for Instrument {
+    fn style(&self) -> container::Style {
+        container::Style {
+            border_color: colors::BORDER,
+            border_width: 1.0,
+            border_radius: 10.0,
+            background: colors::SURFACE.into(),
+            text_color: colors::TEXT.into(),
+        }
+    }
+}
+
 pub mod colors {
     use iced::Color;
 
