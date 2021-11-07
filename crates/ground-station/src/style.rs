@@ -48,6 +48,21 @@ impl container::StyleSheet for Instrument {
         container::Style {
             border_color: colors::BORDER.into(),
             border_width: 1.0,
+            border_radius: 5.0,
+            background: colors::SURFACE.into(),
+            text_color: colors::TEXT.into(),
+        }
+    }
+}
+
+pub struct Tooltip;
+
+impl container::StyleSheet for Tooltip {
+    fn style(&self) -> container::Style {
+        // TODO:
+        container::Style {
+            border_color: colors::BORDER.into(),
+            border_width: 1.0,
             border_radius: 10.0,
             background: colors::SURFACE.into(),
             text_color: colors::TEXT.into(),
@@ -55,11 +70,12 @@ impl container::StyleSheet for Instrument {
     }
 }
 
+
 pub mod colors {
     pub const TEXT: Color = Color::from_rgb(0xEE, 0xEE, 0xEE);
     pub const BORDER: Color = Color::from_rgb(0x25, 0x25, 0x25);
-    pub const SURFACE: Color = Color::from_rgb(0x1C, 0x1C, 0x1C);
-    pub const BACKGROUND: Color = Color::from_rgb(0x16, 0x16, 0x16);
+    pub const SURFACE: Color = Color::from_rgb(0x16, 0x16, 0x16);
+    pub const BACKGROUND: Color = Color::from_rgb(0x00, 0x00, 0x00);
     pub const ACCENT: Color = Color::from_rgb(0x6F, 0xFF, 0xE9);
     pub const ACTIVE: Color = Color::from_rgb(0x72, 0x89, 0xDA);
     pub const HOVERED: Color = Color::from_rgb(0x67, 0x7B, 0xC4);

@@ -2,13 +2,15 @@ use chart::Instrument;
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
-    widget,
+    tooltip::Position,
     window::{self, Mode},
-    Align, Application, Button, Clipboard, Color, Command, Container, Element, HorizontalAlignment,
-    Length, Settings, Subscription, Text,
+    Align, Application, Button, Clipboard, Color, Column, Command, Container, Element,
+    HorizontalAlignment, Length, Row, Settings, Space, Subscription, Text, Tooltip,
 };
 use iced_native::{event, subscription, Event};
 use plotters_iced::{Chart, ChartWidget};
+
+use crate::style::colors;
 
 mod chart;
 mod style;
@@ -119,7 +121,7 @@ impl Application for InstrumentCluster {
     }
 
     fn title(&self) -> String {
-        String::from("Instrument Cluster")
+        String::from("Ground Station")
     }
 
     fn background_color(&self) -> Color {
@@ -175,29 +177,85 @@ impl Application for InstrumentCluster {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        widget::Column::new()
+        // TODO: global text styles
+        Column::new()
             .width(Length::Fill)
             .height(Length::Fill)
             .spacing(10)
             .padding(10)
             .push(
-                widget::Row::new()
+                Row::new()
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .spacing(10)
-                    .push(widget::Space::new(Length::Fill, Length::Fill))
+                    .push(
+                        Column::new()
+                            .push(Space::new(Length::Shrink, Length::Fill))
+                            .push(Text::new("Ground Station").color(colors::TEXT).size(32))
+                            .push(Space::new(Length::Shrink, Length::Units(16)))
+                            .push(
+                                Tooltip::new(
+                                    Text::new("SLT: TODO:").color(colors::TEXT),
+                                    "Station Local Time",
+                                    Position::FollowCursor,
+                                )
+                                .style(style::Tooltip),
+                            )
+                            .push(
+                                Tooltip::new(
+                                    Text::new("GCT: TODO:").color(colors::TEXT),
+                                    "Ground Control Time",
+                                    Position::FollowCursor,
+                                )
+                                .style(style::Tooltip),
+                            )
+                            .push(
+                                Tooltip::new(
+                                    Text::new("VOT: TODO:").color(colors::TEXT),
+                                    "Vehicle On Time",
+                                    Position::FollowCursor,
+                                )
+                                .style(style::Tooltip),
+                            )
+                            .push(
+                                Tooltip::new(
+                                    Text::new("MIT: TODO:").color(colors::TEXT),
+                                    "MIssion Time",
+                                    Position::FollowCursor,
+                                )
+                                .style(style::Tooltip),
+                            )
+                            .push(Space::new(Length::Shrink, Length::Fill))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .align_items(Align::Center)
+                            .spacing(2),
+                    )
                     .push(create_chart(&mut self.charts.c10))
                     .push(create_chart(&mut self.charts.c20))
                     .push(create_chart(&mut self.charts.c30))
-                    .push(widget::Space::new(Length::Fill, Length::Fill)),
+                    .push(
+                        Column::new()
+                            .push(Space::new(Length::Shrink, Length::Fill))
+                            .push(Text::new("Telemetry").color(colors::TEXT).size(32))
+                            .push(Space::new(Length::Shrink, Length::Units(16)))
+                            .push(Text::new("Time since last packet: TODO:").color(colors::TEXT))
+                            .push(Text::new("RSSI: TODO:").color(colors::TEXT))
+                            .push(Text::new("Uplink: TODO:").color(colors::TEXT))
+                            .push(Space::new(Length::Shrink, Length::Fill))
+                            .width(Length::Fill)
+                            .height(Length::Fill)
+                            .align_items(Align::Center)
+                            .spacing(2),
+                    ),
             )
             .push(
-                widget::Row::new()
+                Row::new()
                     .width(Length::Fill)
                     .height(Length::FillPortion(4))
                     .spacing(10)
                     .push(
-                        widget::Column::new()
+                        Column::new()
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(10)
@@ -207,30 +265,24 @@ impl Application for InstrumentCluster {
                             .push(create_chart(&mut self.charts.c04)),
                     )
                     .push(
-                        widget::Container::new(
-                            widget::Container::new(
-                                widget::Column::new()
+                        Container::new(
+                            Container::new(
+                                Column::new()
                                     .push(
-                                        widget::Text::new("Control Cluster")
+                                        Text::new("Control Cluster")
                                             .size(32)
                                             .horizontal_alignment(HorizontalAlignment::Center),
                                     )
                                     .push(
-                                        widget::Text::new(format!(
-                                            "Window Size: {:?}",
-                                            self.window_size
-                                        ))
-                                        .horizontal_alignment(HorizontalAlignment::Center),
+                                        Text::new(format!("Window Size: {:?}", self.window_size))
+                                            .horizontal_alignment(HorizontalAlignment::Center),
                                     )
                                     .push(
-                                        widget::Text::new(format!(
-                                            "Focused: {}",
-                                            self.window_focused
-                                        ))
-                                        .horizontal_alignment(HorizontalAlignment::Center),
+                                        Text::new(format!("Focused: {}", self.window_focused))
+                                            .horizontal_alignment(HorizontalAlignment::Center),
                                     )
                                     .push(
-                                        widget::Row::new()
+                                        Row::new()
                                             .push(
                                                 Button::new(
                                                     &mut self.fullscreen_button,
@@ -268,7 +320,7 @@ impl Application for InstrumentCluster {
                         .center_y(),
                     )
                     .push(
-                        widget::Column::new()
+                        Column::new()
                             .width(Length::Fill)
                             .height(Length::Fill)
                             .spacing(10)

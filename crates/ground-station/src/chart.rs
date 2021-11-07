@@ -78,5 +78,14 @@ impl<Message> Chart<Message> for Instrument {
                 &RED,
             ))
             .unwrap();
+
+        chart
+            .draw_series(LineSeries::new(
+                (0..=100)
+                    .map(|x| x as f32 / 10.0)
+                    .map(|x| (x, x.sin() * 5.0 + 5.0)),
+                &GREEN,
+            ))
+            .unwrap();
     }
 }
