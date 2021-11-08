@@ -1,3 +1,5 @@
+use std::{sync::Once, time::Duration};
+
 use chart::Instrument;
 use iced::{
     button, executor,
@@ -9,13 +11,15 @@ use iced::{
 };
 use iced_native::{event, subscription, Event};
 use plotters_iced::{Chart, ChartWidget};
-
-use crate::style::colors;
+use time::{macros::format_description, OffsetDateTime};
+use tracing::{error, info, warn};
 
 mod chart;
 mod style;
 
 pub fn main() -> iced::Result {
+    tracing_subscriber::fmt().pretty().init();
+
     InstrumentCluster::run(Settings {
         antialiasing: true,
         exit_on_close_request: true,
@@ -84,6 +88,8 @@ struct InstrumentCluster {
     window_mode: Mode,
     window_size: (u32, u32),
 
+    local_time: OffsetDateTime,
+
     charts: Charts,
 
     quit_button: button::State,
@@ -93,9 +99,23 @@ struct InstrumentCluster {
 #[derive(Debug, Clone, Copy)]
 enum Message {
     Quit,
+    LocalTime(OffsetDateTime),
     ToggleFullscreen,
     WindowFocusChange(bool),
     WindowSizeChange((u32, u32)),
+}
+
+fn get_local_time() -> OffsetDateTime {
+    static ONCE: Once = Once::new();
+
+    OffsetDateTime::now_local().unwrap_or_else(|e| {
+        ONCE.call_once(|| {
+            error!("{}", e);
+            warn!("Using UTC for local time");
+        });
+
+        OffsetDateTime::now_utc()
+    })
 }
 
 impl Application for InstrumentCluster {
@@ -113,6 +133,8 @@ impl Application for InstrumentCluster {
 
                 charts: Charts::default(),
 
+                local_time: get_local_time(),
+
                 quit_button: button::State::default(),
                 fullscreen_button: button::State::default(),
             },
@@ -125,7 +147,12 @@ impl Application for InstrumentCluster {
     }
 
     fn background_color(&self) -> Color {
-        style::colors::BACKGROUND.into()
+        if self.window_focused {
+            style::colors::BACKGROUND
+        } else {
+            style::colors::BACKGROUND_UNFOCUSED
+        }
+        .into()
     }
 
     fn update(
@@ -143,194 +170,234 @@ impl Application for InstrumentCluster {
             }
             Message::WindowFocusChange(focus) => self.window_focused = focus,
             Message::WindowSizeChange(size) => self.window_size = size,
+            Message::LocalTime(local_time) => {
+                /* TODO: replace with something better? */
+                self.local_time = local_time
+            }
         }
 
         Command::none()
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        subscription::events_with(|event, status| match (event, status) {
-            (
-                Event::Keyboard(keyboard::Event::KeyPressed {
-                    key_code: KeyCode::Enter,
-                    modifiers:
-                        Modifiers {
-                            alt: true,
-                            control: false,
-                            logo: false,
-                            shift: false,
-                        },
-                }),
-                event::Status::Ignored,
-            ) => Some(Message::ToggleFullscreen),
-            (Event::Window(iced_native::window::Event::Focused), _) => {
-                Some(Message::WindowFocusChange(true))
-            }
-            (Event::Window(iced_native::window::Event::Unfocused), _) => {
-                Some(Message::WindowFocusChange(false))
-            }
-            (Event::Window(iced_native::window::Event::Resized { width, height }), _) => {
-                Some(Message::WindowSizeChange((width, height)))
-            }
-            _ => None,
-        })
+        Subscription::batch([
+            // TODO: update differently
+            iced::time::every(Duration::from_millis(50))
+                .map(|_| Message::LocalTime(get_local_time())),
+            subscription::events_with(|event, status| match (event, status) {
+                (
+                    Event::Keyboard(keyboard::Event::KeyPressed {
+                        key_code: KeyCode::Enter,
+                        modifiers:
+                            Modifiers {
+                                alt: true,
+                                control: false,
+                                logo: false,
+                                shift: false,
+                            },
+                    }),
+                    event::Status::Ignored,
+                ) => Some(Message::ToggleFullscreen),
+                (Event::Window(iced_native::window::Event::Focused), _) => {
+                    Some(Message::WindowFocusChange(true))
+                }
+                (Event::Window(iced_native::window::Event::Unfocused), _) => {
+                    Some(Message::WindowFocusChange(false))
+                }
+                (Event::Window(iced_native::window::Event::Resized { width, height }), _) => {
+                    Some(Message::WindowSizeChange((width, height)))
+                }
+                _ => None,
+            }),
+        ])
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        // TODO: global text styles
-        Column::new()
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .spacing(10)
-            .padding(10)
-            .push(
-                Row::new()
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .spacing(10)
-                    .push(
-                        Column::new()
-                            .push(Space::new(Length::Shrink, Length::Fill))
-                            .push(Text::new("Ground Station").color(colors::TEXT).size(32))
-                            .push(Space::new(Length::Shrink, Length::Units(16)))
-                            .push(
-                                Tooltip::new(
-                                    Text::new("SLT: TODO:").color(colors::TEXT),
-                                    "Station Local Time",
-                                    Position::FollowCursor,
-                                )
-                                .style(style::Tooltip),
-                            )
-                            .push(
-                                Tooltip::new(
-                                    Text::new("GCT: TODO:").color(colors::TEXT),
-                                    "Ground Control Time",
-                                    Position::FollowCursor,
-                                )
-                                .style(style::Tooltip),
-                            )
-                            .push(
-                                Tooltip::new(
-                                    Text::new("VOT: TODO:").color(colors::TEXT),
-                                    "Vehicle On Time",
-                                    Position::FollowCursor,
-                                )
-                                .style(style::Tooltip),
-                            )
-                            .push(
-                                Tooltip::new(
-                                    Text::new("MIT: TODO:").color(colors::TEXT),
-                                    "MIssion Time",
-                                    Position::FollowCursor,
-                                )
-                                .style(style::Tooltip),
-                            )
-                            .push(Space::new(Length::Shrink, Length::Fill))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .align_items(Align::Center)
-                            .spacing(2),
-                    )
-                    .push(create_chart(&mut self.charts.c10))
-                    .push(create_chart(&mut self.charts.c20))
-                    .push(create_chart(&mut self.charts.c30))
-                    .push(
-                        Column::new()
-                            .push(Space::new(Length::Shrink, Length::Fill))
-                            .push(Text::new("Telemetry").color(colors::TEXT).size(32))
-                            .push(Space::new(Length::Shrink, Length::Units(16)))
-                            .push(Text::new("Time since last packet: TODO:").color(colors::TEXT))
-                            .push(Text::new("RSSI: TODO:").color(colors::TEXT))
-                            .push(Text::new("Uplink: TODO:").color(colors::TEXT))
-                            .push(Space::new(Length::Shrink, Length::Fill))
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .align_items(Align::Center)
-                            .spacing(2),
-                    ),
-            )
-            .push(
-                Row::new()
-                    .width(Length::Fill)
-                    .height(Length::FillPortion(4))
-                    .spacing(10)
-                    .push(
-                        Column::new()
-                            .width(Length::Fill)
-                            .height(Length::Fill)
-                            .spacing(10)
-                            .push(create_chart(&mut self.charts.c01))
-                            .push(create_chart(&mut self.charts.c02))
-                            .push(create_chart(&mut self.charts.c03))
-                            .push(create_chart(&mut self.charts.c04)),
-                    )
-                    .push(
-                        Container::new(
-                            Container::new(
-                                Column::new()
-                                    .push(
-                                        Text::new("Control Cluster")
-                                            .size(32)
-                                            .horizontal_alignment(HorizontalAlignment::Center),
-                                    )
-                                    .push(
-                                        Text::new(format!("Window Size: {:?}", self.window_size))
-                                            .horizontal_alignment(HorizontalAlignment::Center),
-                                    )
-                                    .push(
-                                        Text::new(format!("Focused: {}", self.window_focused))
-                                            .horizontal_alignment(HorizontalAlignment::Center),
-                                    )
-                                    .push(
-                                        Row::new()
-                                            .push(
-                                                Button::new(
-                                                    &mut self.fullscreen_button,
-                                                    Text::new(match self.window_mode {
-                                                        Mode::Windowed => "Fullscreen",
-                                                        Mode::Fullscreen => "Windowed",
-                                                    }),
-                                                )
-                                                .on_press(Message::ToggleFullscreen)
-                                                .style(style::ControlCluster),
-                                            )
-                                            .push(
-                                                Button::new(
-                                                    &mut self.quit_button,
-                                                    Text::new("Quit"),
-                                                )
-                                                .on_press(Message::Quit)
-                                                .style(style::ControlCluster),
-                                            )
-                                            .spacing(50),
-                                    )
-                                    .spacing(10)
-                                    .align_items(Align::Center)
-                                    .width(Length::Shrink)
-                                    .height(Length::Shrink),
-                            )
-                            .padding(10)
-                            .style(style::ControlCluster)
-                            .width(Length::Shrink)
-                            .height(Length::Shrink),
-                        )
-                        .width(Length::FillPortion(3))
+        // TODO: mono space font
+        Container::new(
+            Column::new()
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .spacing(10)
+                .padding(10)
+                .push(
+                    Row::new()
+                        .width(Length::Fill)
                         .height(Length::Fill)
-                        .center_x()
-                        .center_y(),
-                    )
-                    .push(
-                        Column::new()
-                            .width(Length::Fill)
+                        .spacing(10)
+                        .push(
+                            Column::new()
+                                .push(Space::new(Length::Shrink, Length::Fill))
+                                .push(Text::new("Telemetry").size(32))
+                                .push(Space::new(Length::Shrink, Length::Units(16)))
+                                .push(Text::new("Time since last packet: TODO:"))
+                                .push(
+                                    Tooltip::new(
+                                        Text::new("RSSI: TODO:"),
+                                        "Received Signal Strength Indicator",
+                                        Position::FollowCursor,
+                                    )
+                                    .style(style::Tooltip),
+                                )
+                                .push(Text::new("Uplink: TODO:"))
+                                .push(Space::new(Length::Shrink, Length::Fill))
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .align_items(Align::Center)
+                                .spacing(2),
+                        )
+                        .push(create_chart(&mut self.charts.c10))
+                        .push(create_chart(&mut self.charts.c20))
+                        .push(create_chart(&mut self.charts.c30))
+                        .push(
+                            Column::new()
+                                .push(Space::new(Length::Shrink, Length::Fill))
+                                .push(Text::new("Ground Station").size(32))
+                                .push(Space::new(Length::Shrink, Length::Units(16)))
+                                .push(
+                                    Tooltip::new(
+                                        Text::new(format!(
+                                            "{}: {}",
+                                            if self.local_time.offset().is_utc() {
+                                                "UTC"
+                                            } else {
+                                                "SLT"
+                                            },
+                                            self.local_time
+                                                .format(format_description!(
+                                                    "[hour repr:24]:[minute]:[second].[subsecond digits:1]"
+                                                ))
+                                                .unwrap(),
+                                        )),
+                                        if self.local_time.offset().is_utc() {
+                                            "Universal Coordinated Time"
+                                        } else {
+                                            "Station Local Time"
+                                        },
+                                        Position::FollowCursor,
+                                    )
+                                    .style(style::Tooltip),
+                                )
+                                .push(
+                                    Tooltip::new(
+                                        Text::new("GCT: TODO:"),
+                                        "Ground Control Time",
+                                        Position::FollowCursor,
+                                    )
+                                    .style(style::Tooltip),
+                                )
+                                .push(
+                                    Tooltip::new(
+                                        Text::new("VOT: TODO:"),
+                                        "Vehicle On Time",
+                                        Position::FollowCursor,
+                                    )
+                                    .style(style::Tooltip),
+                                )
+                                .push(
+                                    Tooltip::new(
+                                        Text::new("MIT: TODO:"),
+                                        "MIssion Time",
+                                        Position::FollowCursor,
+                                    )
+                                    .style(style::Tooltip),
+                                )
+                                .push(Space::new(Length::Shrink, Length::Fill))
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .align_items(Align::Center)
+                                .spacing(2),
+                        ),
+                )
+                .push(
+                    Row::new()
+                        .width(Length::Fill)
+                        .height(Length::FillPortion(4))
+                        .spacing(10)
+                        .push(
+                            Column::new()
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(10)
+                                .push(create_chart(&mut self.charts.c01))
+                                .push(create_chart(&mut self.charts.c02))
+                                .push(create_chart(&mut self.charts.c03))
+                                .push(create_chart(&mut self.charts.c04)),
+                        )
+                        .push(
+                            Container::new(
+                                Container::new(
+                                    Column::new()
+                                        .push(
+                                            Text::new("Control Cluster")
+                                                .size(32)
+                                                .horizontal_alignment(HorizontalAlignment::Center),
+                                        )
+                                        .push(
+                                            Text::new(format!(
+                                                "Window Size: {:?}",
+                                                self.window_size
+                                            ))
+                                            .horizontal_alignment(HorizontalAlignment::Center),
+                                        )
+                                        .push(
+                                            Text::new(format!("Focused: {}", self.window_focused))
+                                                .horizontal_alignment(HorizontalAlignment::Center),
+                                        )
+                                        .push(
+                                            Row::new()
+                                                .push(
+                                                    Button::new(
+                                                        &mut self.fullscreen_button,
+                                                        Text::new(match self.window_mode {
+                                                            Mode::Windowed => "Fullscreen",
+                                                            Mode::Fullscreen => "Windowed",
+                                                        }),
+                                                    )
+                                                    .on_press(Message::ToggleFullscreen)
+                                                    .style(style::ControlCluster),
+                                                )
+                                                .push(
+                                                    Button::new(
+                                                        &mut self.quit_button,
+                                                        Text::new("Quit"),
+                                                    )
+                                                    .on_press(Message::Quit)
+                                                    .style(style::ControlCluster),
+                                                )
+                                                .spacing(50),
+                                        )
+                                        .spacing(10)
+                                        .align_items(Align::Center)
+                                        .width(Length::Shrink)
+                                        .height(Length::Shrink),
+                                )
+                                .padding(10)
+                                .style(style::ControlCluster)
+                                .width(Length::Shrink)
+                                .height(Length::Shrink),
+                            )
+                            .width(Length::FillPortion(3))
                             .height(Length::Fill)
-                            .spacing(10)
-                            .push(create_chart(&mut self.charts.c41))
-                            .push(create_chart(&mut self.charts.c42))
-                            .push(create_chart(&mut self.charts.c43))
-                            .push(create_chart(&mut self.charts.c44)),
-                    ),
-            )
-            .into()
+                            .center_x()
+                            .center_y(),
+                        )
+                        .push(
+                            Column::new()
+                                .width(Length::Fill)
+                                .height(Length::Fill)
+                                .spacing(10)
+                                .push(create_chart(&mut self.charts.c41))
+                                .push(create_chart(&mut self.charts.c42))
+                                .push(create_chart(&mut self.charts.c43))
+                                .push(create_chart(&mut self.charts.c44)),
+                        ),
+                ),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(style::Window)
+        .into()
     }
 
     fn mode(&self) -> window::Mode {
