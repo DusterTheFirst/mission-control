@@ -11,7 +11,7 @@ use iced::{
 };
 use iced_native::{event, subscription, Event};
 use plotters_iced::{Chart, ChartWidget};
-use time::{macros::format_description, OffsetDateTime};
+use time::{macros::format_description, OffsetDateTime, Time};
 use tracing::{error, info, warn};
 
 mod chart;
@@ -89,6 +89,8 @@ struct InstrumentCluster {
     window_size: (u32, u32),
 
     local_time: OffsetDateTime,
+    station_start_time: OffsetDateTime,
+    mission_start_time: Option<OffsetDateTime>,
 
     charts: Charts,
 
@@ -118,12 +120,24 @@ fn get_local_time() -> OffsetDateTime {
     })
 }
 
+fn format_duration(duration: time::Duration) -> String {
+    format!(
+        "{:02}:{:02}:{:02}.{:01}",
+        duration.whole_hours(),
+        duration.whole_minutes(),
+        duration.whole_seconds(),
+        duration.subsec_milliseconds() / 100
+    )
+}
+
 impl Application for InstrumentCluster {
     type Executor = executor::Default;
     type Message = Message;
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Self::Message>) {
+        let local_time = get_local_time();
+
         (
             Self {
                 quit: false,
@@ -133,7 +147,12 @@ impl Application for InstrumentCluster {
 
                 charts: Charts::default(),
 
-                local_time: get_local_time(),
+                local_time,
+                station_start_time: local_time.replace_time(
+                    Time::from_hms(local_time.hour(), local_time.minute(), local_time.second())
+                        .unwrap(),
+                ),
+                mission_start_time: None,
 
                 quit_button: button::State::default(),
                 fullscreen_button: button::State::default(),
@@ -147,12 +166,7 @@ impl Application for InstrumentCluster {
     }
 
     fn background_color(&self) -> Color {
-        if self.window_focused {
-            style::colors::BACKGROUND
-        } else {
-            style::colors::BACKGROUND_UNFOCUSED
-        }
-        .into()
+        style::colors::BACKGROUND.into()
     }
 
     fn update(
@@ -230,7 +244,14 @@ impl Application for InstrumentCluster {
                                 .push(Space::new(Length::Shrink, Length::Fill))
                                 .push(Text::new("Telemetry").size(32))
                                 .push(Space::new(Length::Shrink, Length::Units(16)))
-                                .push(Text::new("Time since last packet: TODO:"))
+                                .push(
+                                    Tooltip::new(
+                                        Text::new("TSLP: TODO:"),
+                                        "Time Since Last Packet",
+                                        Position::FollowCursor,
+                                    )
+                                    .style(style::Tooltip),
+                                )
                                 .push(
                                     Tooltip::new(
                                         Text::new("RSSI: TODO:"),
@@ -280,7 +301,12 @@ impl Application for InstrumentCluster {
                                 )
                                 .push(
                                     Tooltip::new(
-                                        Text::new("GCT: TODO:"),
+                                        Text::new(format!(
+                                            "GCT: {}",
+                                            format_duration(
+                                                self.local_time - self.station_start_time
+                                            )
+                                        )),
                                         "Ground Control Time",
                                         Position::FollowCursor,
                                     )
