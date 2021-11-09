@@ -81,6 +81,52 @@ impl container::StyleSheet for Tooltip {
     }
 }
 
+pub mod fonts {
+    // TODO: split camel case name
+    macro_rules! font_family {
+        ($name:ident: $($weight:ident),*) => {
+            paste::paste! {
+                #[doc = $name " font family"]
+                pub mod [<$name:snake>] {
+                    $(
+                        #[doc = "`" $name "-" $weight ".ttf`"]
+                        #[allow(unused)]
+                        pub static [<$weight:snake:upper>]: iced::Font = iced::Font::External {
+                            name: stringify!($name),
+                            bytes: include_bytes!(concat!("../fonts/", stringify!([<$name:snake>]) ,"/static/", stringify!($name), "-", stringify!($weight), ".ttf")),
+                        };
+                    )*
+                }
+            }
+        };
+    }
+
+    font_family! {
+        RobotoMono:
+            Bold,
+            BoldItalic,
+            ExtraLight,
+            ExtraLightItalic,
+            Italic,
+            Light,
+            LightItalic,
+            Medium,
+            MediumItalic,
+            Regular,
+            SemiBold,
+            SemiBoldItalic,
+            Thin,
+            ThinItalic
+    }
+
+    // pub mod roboto_mono {
+    //     pub static REGULAR: iced::Font = iced::Font::External {
+    //         name: "Roboto Mono",
+    //         bytes: include_bytes!("../fonts/roboto_mono/static/RobotoMono-Regular.ttf"),
+    //     };
+    // }
+}
+
 pub mod colors {
     pub const TEXT: Color = Color::from_rgb(0xEE, 0xEE, 0xEE);
     pub const BORDER: Color = Color::from_rgb(0x25, 0x25, 0x25);

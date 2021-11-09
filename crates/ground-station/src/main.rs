@@ -148,6 +148,7 @@ impl Application for InstrumentCluster {
                 charts: Charts::default(),
 
                 local_time,
+                // Artificially sync the local time with the ground control time
                 station_start_time: local_time.replace_time(
                     Time::from_hms(local_time.hour(), local_time.minute(), local_time.second())
                         .unwrap(),
@@ -289,7 +290,7 @@ impl Application for InstrumentCluster {
                                                     "[hour repr:24]:[minute]:[second].[subsecond digits:1]"
                                                 ))
                                                 .unwrap(),
-                                        )),
+                                        )).font(style::fonts::roboto_mono::REGULAR),
                                         if self.local_time.offset().is_utc() {
                                             "Universal Coordinated Time"
                                         } else {
@@ -306,7 +307,7 @@ impl Application for InstrumentCluster {
                                             format_duration(
                                                 self.local_time - self.station_start_time
                                             )
-                                        )),
+                                        )).font(style::fonts::roboto_mono::REGULAR),
                                         "Ground Control Time",
                                         Position::FollowCursor,
                                     )
@@ -314,7 +315,7 @@ impl Application for InstrumentCluster {
                                 )
                                 .push(
                                     Tooltip::new(
-                                        Text::new("VOT: TODO:"),
+                                        Text::new(format!("VOT: {}", format_duration(time::Duration::ZERO /* TODO: */))).font(style::fonts::roboto_mono::REGULAR),
                                         "Vehicle On Time",
                                         Position::FollowCursor,
                                     )
@@ -322,7 +323,7 @@ impl Application for InstrumentCluster {
                                 )
                                 .push(
                                     Tooltip::new(
-                                        Text::new("MIT: TODO:"),
+                                        Text::new(format!("MIT: {}", format_duration(time::Duration::ZERO /* TODO: */))).font(style::fonts::roboto_mono::REGULAR),
                                         "MIssion Time",
                                         Position::FollowCursor,
                                     )

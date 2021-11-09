@@ -11,6 +11,7 @@ plotters-backend = "0.3"
 plotters-iced = "0.1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+paste = "1.0"
 
 [dependencies.iced]
 version = "0.3"
