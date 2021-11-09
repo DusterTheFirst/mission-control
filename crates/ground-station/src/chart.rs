@@ -2,24 +2,65 @@ use std::fmt::Debug;
 
 use iced::{
     canvas::{Cache, Frame},
-    Size,
+    Container, Length, Size,
 };
 use plotters::prelude::*;
 
-use plotters_iced::{Chart, ChartBuilder, DrawingBackend};
+use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
+use time::{Duration, Instant};
+use tracing::info;
 
 use crate::style;
 
 #[derive(Debug)]
 pub struct Instrument {
+    datum: Vec<()>,
+    title: String,
+
+    // TODO: change timebase between ground control, vehicle on, and mission start
+    ground_control_time: Duration,
+    vehicle_on_time: Option<Instant>,
+    mission_start: Option<Instant>,
+
     cache: Cache,
 }
 
-impl Default for Instrument {
-    fn default() -> Self {
+impl Instrument {
+    pub fn new<S: Into<String>>(title: S) -> Self {
+        let datum = Vec::with_capacity(1 << 10); // TODO: calculate capacity better;
+
         Self {
+            datum,
+            ground_control_time: Duration::ZERO,
+            title: title.into(),
             cache: Cache::new(),
         }
+    }
+}
+
+impl Instrument {
+    // TODO: pass times here rather than storing them in state
+    pub fn view<'s, Message: 's>(&'s mut self) -> Container<'_, Message> {
+        Container::new(
+            ChartWidget::new(self)
+                .width(Length::Fill)
+                .height(Length::Fill),
+        )
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(style::Instrument)
+    }
+
+    pub fn update_time(&mut self, ground_control_time: Duration) {
+        self.ground_control_time = ground_control_time;
+
+        self.cache.clear();
+    }
+
+    pub fn add_datum(&mut self) {
+        // TODO:
+
+        self.cache.clear();
     }
 }
 
@@ -37,7 +78,7 @@ impl<Message> Chart<Message> for Instrument {
             .margin_right(20)
             // Set the caption of the chart
             .caption(
-                "This is our first plot",
+                &self.title,
                 FontDesc::new(FontFamily::SansSerif, 20.0, FontStyle::Normal)
                     .color(&style::colors::TEXT),
             )

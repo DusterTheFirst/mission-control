@@ -4,6 +4,7 @@
         "egui",
         "subsec",
         "TSLP",
+        "twox",
         "wmidi"
     ]
 }

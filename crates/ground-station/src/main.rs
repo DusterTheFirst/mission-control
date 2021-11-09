@@ -27,58 +27,21 @@ pub fn main() -> iced::Result {
     })
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct Charts {
     c00: Instrument,
     c01: Instrument,
     c02: Instrument,
     c03: Instrument,
     c04: Instrument,
-    c05: Instrument,
-    c06: Instrument,
-    c07: Instrument,
-    c08: Instrument,
-    c09: Instrument,
     c10: Instrument,
-    c11: Instrument,
-    c12: Instrument,
-    c13: Instrument,
-    c14: Instrument,
-    c15: Instrument,
-    c16: Instrument,
-    c17: Instrument,
-    c18: Instrument,
-    c19: Instrument,
     c20: Instrument,
-    c21: Instrument,
-    c22: Instrument,
-    c23: Instrument,
-    c24: Instrument,
-    c25: Instrument,
-    c26: Instrument,
-    c27: Instrument,
-    c28: Instrument,
-    c29: Instrument,
     c30: Instrument,
-    c31: Instrument,
-    c32: Instrument,
-    c33: Instrument,
-    c34: Instrument,
-    c35: Instrument,
-    c36: Instrument,
-    c37: Instrument,
-    c38: Instrument,
-    c39: Instrument,
     c40: Instrument,
     c41: Instrument,
     c42: Instrument,
     c43: Instrument,
     c44: Instrument,
-    c45: Instrument,
-    c46: Instrument,
-    c47: Instrument,
-    c48: Instrument,
-    c49: Instrument,
 }
 
 #[derive(Debug)]
@@ -145,7 +108,21 @@ impl Application for InstrumentCluster {
                 window_mode: Mode::Fullscreen,
                 window_size: (0, 0),
 
-                charts: Charts::default(),
+                charts: Charts {
+                    c00: Instrument::new("00"),
+                    c01: Instrument::new("01"),
+                    c02: Instrument::new("02"),
+                    c03: Instrument::new("03"),
+                    c04: Instrument::new("04"),
+                    c10: Instrument::new("10"),
+                    c20: Instrument::new("20"),
+                    c30: Instrument::new("30"),
+                    c40: Instrument::new("40"),
+                    c41: Instrument::new("41"),
+                    c42: Instrument::new("42"),
+                    c43: Instrument::new("43"),
+                    c44: Instrument::new("44"),
+                },
 
                 local_time,
                 // Artificially sync the local time with the ground control time
@@ -228,7 +205,6 @@ impl Application for InstrumentCluster {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        // TODO: mono space font
         Container::new(
             Column::new()
                 .width(Length::Fill)
@@ -268,9 +244,9 @@ impl Application for InstrumentCluster {
                                 .align_items(Align::Center)
                                 .spacing(2),
                         )
-                        .push(create_chart(&mut self.charts.c10))
-                        .push(create_chart(&mut self.charts.c20))
-                        .push(create_chart(&mut self.charts.c30))
+                        .push(self.charts.c10.view())
+                        .push( self.charts.c20.view())
+                        .push( self.charts.c30.view())
                         .push(
                             Column::new()
                                 .push(Space::new(Length::Shrink, Length::Fill))
@@ -346,10 +322,10 @@ impl Application for InstrumentCluster {
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .spacing(10)
-                                .push(create_chart(&mut self.charts.c01))
-                                .push(create_chart(&mut self.charts.c02))
-                                .push(create_chart(&mut self.charts.c03))
-                                .push(create_chart(&mut self.charts.c04)),
+                                .push(self.charts.c01.view())
+                                .push(self.charts.c02.view())
+                                .push(self.charts.c03.view())
+                                .push(self.charts.c04.view()),
                         )
                         .push(
                             Container::new(
@@ -414,10 +390,10 @@ impl Application for InstrumentCluster {
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .spacing(10)
-                                .push(create_chart(&mut self.charts.c41))
-                                .push(create_chart(&mut self.charts.c42))
-                                .push(create_chart(&mut self.charts.c43))
-                                .push(create_chart(&mut self.charts.c44)),
+                                .push(self.charts.c41.view())
+                                .push(self.charts.c42.view())
+                                .push(self.charts.c43.view())
+                                .push(self.charts.c44.view()),
                         ),
                 ),
         )
@@ -434,17 +410,4 @@ impl Application for InstrumentCluster {
     fn should_exit(&self) -> bool {
         self.quit
     }
-}
-
-pub fn create_chart<'chart, Message: 'chart>(
-    chart: &'chart mut impl Chart<Message>,
-) -> Container<'chart, Message> {
-    Container::new(
-        ChartWidget::new(chart)
-            .width(Length::Fill)
-            .height(Length::Fill),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(style::Instrument)
 }
