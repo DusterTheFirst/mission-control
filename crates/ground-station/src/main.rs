@@ -1,6 +1,6 @@
-use std::{sync::Once, time::Duration};
+use std::time::Duration;
 
-use chart::Instrument;
+use chart::{Instrument, StationTime};
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
@@ -10,9 +10,7 @@ use iced::{
     HorizontalAlignment, Length, Row, Settings, Space, Subscription, Text, Tooltip,
 };
 use iced_native::{event, subscription, Event};
-use plotters_iced::{Chart, ChartWidget};
-use time::{macros::format_description, OffsetDateTime, Time};
-use tracing::{error, info, warn};
+use time::macros::format_description;
 
 mod chart;
 mod style;
@@ -51,9 +49,7 @@ struct InstrumentCluster {
     window_mode: Mode,
     window_size: (u32, u32),
 
-    local_time: OffsetDateTime,
-    station_start_time: OffsetDateTime,
-    mission_start_time: Option<OffsetDateTime>,
+    time: StationTime,
 
     charts: Charts,
 
@@ -64,25 +60,13 @@ struct InstrumentCluster {
 #[derive(Debug, Clone, Copy)]
 enum Message {
     Quit,
-    LocalTime(OffsetDateTime),
+    Refresh,
     ToggleFullscreen,
     WindowFocusChange(bool),
     WindowSizeChange((u32, u32)),
 }
 
-fn get_local_time() -> OffsetDateTime {
-    static ONCE: Once = Once::new();
-
-    OffsetDateTime::now_local().unwrap_or_else(|e| {
-        ONCE.call_once(|| {
-            error!("{}", e);
-            warn!("Using UTC for local time");
-        });
-
-        OffsetDateTime::now_utc()
-    })
-}
-
+// TODO: change to trait
 fn format_duration(duration: time::Duration) -> String {
     format!(
         "{:02}:{:02}:{:02}.{:01}",
@@ -99,8 +83,6 @@ impl Application for InstrumentCluster {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Self::Message>) {
-        let local_time = get_local_time();
-
         (
             Self {
                 quit: false,
@@ -124,13 +106,7 @@ impl Application for InstrumentCluster {
                     c44: Instrument::new("44"),
                 },
 
-                local_time,
-                // Artificially sync the local time with the ground control time
-                station_start_time: local_time.replace_time(
-                    Time::from_hms(local_time.hour(), local_time.minute(), local_time.second())
-                        .unwrap(),
-                ),
-                mission_start_time: None,
+                time: StationTime::setup(),
 
                 quit_button: button::State::default(),
                 fullscreen_button: button::State::default(),
@@ -162,9 +138,9 @@ impl Application for InstrumentCluster {
             }
             Message::WindowFocusChange(focus) => self.window_focused = focus,
             Message::WindowSizeChange(size) => self.window_size = size,
-            Message::LocalTime(local_time) => {
+            Message::Refresh => {
                 /* TODO: replace with something better? */
-                self.local_time = local_time
+                self.time.update()
             }
         }
 
@@ -174,8 +150,7 @@ impl Application for InstrumentCluster {
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::batch([
             // TODO: update differently
-            iced::time::every(Duration::from_millis(50))
-                .map(|_| Message::LocalTime(get_local_time())),
+            iced::time::every(Duration::from_millis(50)).map(|_| Message::Refresh),
             subscription::events_with(|event, status| match (event, status) {
                 (
                     Event::Keyboard(keyboard::Event::KeyPressed {
@@ -244,9 +219,9 @@ impl Application for InstrumentCluster {
                                 .align_items(Align::Center)
                                 .spacing(2),
                         )
-                        .push(self.charts.c10.view())
-                        .push( self.charts.c20.view())
-                        .push( self.charts.c30.view())
+                        .push(self.charts.c10.view::<Self::Message>(&self.time))
+                        .push( self.charts.c20.view::<Self::Message>(&self.time))
+                        .push( self.charts.c30.view::<Self::Message>(&self.time))
                         .push(
                             Column::new()
                                 .push(Space::new(Length::Shrink, Length::Fill))
@@ -256,18 +231,18 @@ impl Application for InstrumentCluster {
                                     Tooltip::new(
                                         Text::new(format!(
                                             "{}: {}",
-                                            if self.local_time.offset().is_utc() {
+                                            if self.time.now.offset().is_utc() {
                                                 "UTC"
                                             } else {
                                                 "SLT"
                                             },
-                                            self.local_time
+                                            self.time.now
                                                 .format(format_description!(
                                                     "[hour repr:24]:[minute]:[second].[subsecond digits:1]"
                                                 ))
                                                 .unwrap(),
                                         )).font(style::fonts::roboto_mono::REGULAR),
-                                        if self.local_time.offset().is_utc() {
+                                        if self.time.now.offset().is_utc() {
                                             "Universal Coordinated Time"
                                         } else {
                                             "Station Local Time"
@@ -281,7 +256,7 @@ impl Application for InstrumentCluster {
                                         Text::new(format!(
                                             "GCT: {}",
                                             format_duration(
-                                                self.local_time - self.station_start_time
+                                               self.time.get_elapsed(chart::TimeBase::GroundControl)
                                             )
                                         )).font(style::fonts::roboto_mono::REGULAR),
                                         "Ground Control Time",
@@ -291,7 +266,9 @@ impl Application for InstrumentCluster {
                                 )
                                 .push(
                                     Tooltip::new(
-                                        Text::new(format!("VOT: {}", format_duration(time::Duration::ZERO /* TODO: */))).font(style::fonts::roboto_mono::REGULAR),
+                                        Text::new(format!("VOT: {}", format_duration(
+                                            self.time.get_elapsed(chart::TimeBase::VehicleOn)
+                                         ))).font(style::fonts::roboto_mono::REGULAR),
                                         "Vehicle On Time",
                                         Position::FollowCursor,
                                     )
@@ -299,7 +276,9 @@ impl Application for InstrumentCluster {
                                 )
                                 .push(
                                     Tooltip::new(
-                                        Text::new(format!("MIT: {}", format_duration(time::Duration::ZERO /* TODO: */))).font(style::fonts::roboto_mono::REGULAR),
+                                        Text::new(format!("MIT: {}", format_duration(
+                                            self.time.get_elapsed(chart::TimeBase::Mission)
+                                         ))).font(style::fonts::roboto_mono::REGULAR),
                                         "MIssion Time",
                                         Position::FollowCursor,
                                     )
@@ -322,10 +301,10 @@ impl Application for InstrumentCluster {
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .spacing(10)
-                                .push(self.charts.c01.view())
-                                .push(self.charts.c02.view())
-                                .push(self.charts.c03.view())
-                                .push(self.charts.c04.view()),
+                                .push(self.charts.c01.view::<Self::Message>(&self.time))
+                                .push(self.charts.c02.view::<Self::Message>(&self.time))
+                                .push(self.charts.c03.view::<Self::Message>(&self.time))
+                                .push(self.charts.c04.view::<Self::Message>(&self.time)),
                         )
                         .push(
                             Container::new(
@@ -390,10 +369,10 @@ impl Application for InstrumentCluster {
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .spacing(10)
-                                .push(self.charts.c41.view())
-                                .push(self.charts.c42.view())
-                                .push(self.charts.c43.view())
-                                .push(self.charts.c44.view()),
+                                .push(self.charts.c41.view::<Self::Message>(&self.time))
+                                .push(self.charts.c42.view::<Self::Message>(&self.time))
+                                .push(self.charts.c43.view::<Self::Message>(&self.time))
+                                .push(self.charts.c44.view::<Self::Message>(&self.time)),
                         ),
                 ),
         )

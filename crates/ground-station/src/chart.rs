@@ -1,14 +1,11 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Once};
 
-use iced::{
-    canvas::{Cache, Frame},
-    Container, Length, Size,
-};
+use iced::{Container, Element, Length};
 use plotters::prelude::*;
 
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
-use time::{Duration, Instant};
-use tracing::info;
+use time::{Duration, OffsetDateTime, Time};
+use tracing::{error, warn};
 
 use crate::style;
 
@@ -16,13 +13,76 @@ use crate::style;
 pub struct Instrument {
     datum: Vec<()>,
     title: String,
+}
 
-    // TODO: change timebase between ground control, vehicle on, and mission start
-    ground_control_time: Duration,
-    vehicle_on_time: Option<Instant>,
-    mission_start: Option<Instant>,
+#[derive(Debug)]
+pub struct StationTime {
+    pub now: OffsetDateTime,
+    pub ground_control_on: OffsetDateTime,
+    pub vehicle_on: Option<OffsetDateTime>,
+    pub mission_start: Option<OffsetDateTime>,
+}
 
-    cache: Cache,
+pub enum TimeBase {
+    GroundControl,
+    VehicleOn,
+    Mission,
+}
+
+impl StationTime {
+    /// Get the current date time in the local timezone or in UTC
+    /// if the local timezone could not be determined
+    fn now() -> OffsetDateTime {
+        static ONCE: Once = Once::new();
+
+        OffsetDateTime::now_local().unwrap_or_else(|e| {
+            ONCE.call_once(|| {
+                error!("{}", e);
+                warn!("Using UTC for local time");
+            });
+
+            OffsetDateTime::now_utc()
+        })
+    }
+
+    /// Quantize an `OffsetDateTime` to the nearest second
+    ///
+    /// This is useful to make sure times on the display will update together
+    fn quantize(date_time: OffsetDateTime) -> OffsetDateTime {
+        date_time.replace_time(
+            Time::from_hms(date_time.hour(), date_time.minute(), date_time.second()).unwrap(),
+        )
+    }
+
+    pub fn setup() -> Self {
+        let now = Self::now();
+
+        Self {
+            now,
+            // Artificially sync the local time with the ground control time
+            ground_control_on: Self::quantize(now),
+            vehicle_on: None,
+            mission_start: None,
+        }
+    }
+
+    pub fn get_elapsed(&self, time_base: TimeBase) -> Duration {
+        match time_base {
+            TimeBase::GroundControl => self.now - self.ground_control_on,
+            TimeBase::VehicleOn => self
+                .vehicle_on
+                .map(|vehicle_on| self.now - vehicle_on)
+                .unwrap_or(Duration::ZERO),
+            TimeBase::Mission => self
+                .mission_start
+                .map(|mission_start| self.now - mission_start)
+                .unwrap_or(Duration::ZERO),
+        }
+    }
+
+    pub fn update(&mut self) {
+        self.now = Self::now();
+    }
 }
 
 impl Instrument {
@@ -31,16 +91,25 @@ impl Instrument {
 
         Self {
             datum,
-            ground_control_time: Duration::ZERO,
             title: title.into(),
-            cache: Cache::new(),
         }
     }
 }
 
 impl Instrument {
     // TODO: pass times here rather than storing them in state
-    pub fn view<'s, Message: 's>(&'s mut self) -> Container<'_, Message> {
+    pub fn view<'s, Message: 's>(&'s mut self, time: &'s StationTime) -> InstrumentChart {
+        InstrumentChart(self, time)
+    }
+
+    pub fn add_datum(&mut self) {
+        // TODO:
+    }
+}
+
+// TODO: ownership?
+impl<'a, Message: 'a> Into<Element<'a, Message>> for InstrumentChart<'a> {
+    fn into(self) -> Element<'a, Message> {
         Container::new(
             ChartWidget::new(self)
                 .width(Length::Fill)
@@ -49,36 +118,24 @@ impl Instrument {
         .width(Length::Fill)
         .height(Length::Fill)
         .style(style::Instrument)
-    }
-
-    pub fn update_time(&mut self, ground_control_time: Duration) {
-        self.ground_control_time = ground_control_time;
-
-        self.cache.clear();
-    }
-
-    pub fn add_datum(&mut self) {
-        // TODO:
-
-        self.cache.clear();
+        .into()
     }
 }
 
-impl<Message> Chart<Message> for Instrument {
-    #[inline]
-    fn draw<F: Fn(&mut Frame)>(&self, size: Size, f: F) -> iced::canvas::Geometry {
-        self.cache.draw(size, f)
-    }
+pub struct InstrumentChart<'i>(&'i mut Instrument, &'i StationTime);
 
+impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
     #[inline]
     fn build_chart<DB: DrawingBackend>(&self, mut builder: ChartBuilder<DB>) {
+        let Self(instrument, time) = self;
+
         // After this point, we should be able to draw construct a chart context
         let mut chart = builder
             .margin(5)
             .margin_right(20)
             // Set the caption of the chart
             .caption(
-                &self.title,
+                &instrument.title,
                 FontDesc::new(FontFamily::SansSerif, 20.0, FontStyle::Normal)
                     .color(&style::colors::TEXT),
             )
