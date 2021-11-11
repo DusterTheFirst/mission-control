@@ -13,9 +13,10 @@ use crate::style;
 pub struct Instrument {
     datum: Vec<()>,
     title: String,
+    range: f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct StationTime {
     pub now: OffsetDateTime,
     pub ground_control_on: OffsetDateTime,
@@ -23,6 +24,7 @@ pub struct StationTime {
     pub mission_start: Option<OffsetDateTime>,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum TimeBase {
     GroundControl,
     VehicleOn,
@@ -86,20 +88,25 @@ impl StationTime {
 }
 
 impl Instrument {
-    pub fn new<S: Into<String>>(title: S) -> Self {
+    pub fn new<S: Into<String>>(title: S, range: f64) -> Self {
         let datum = Vec::with_capacity(1 << 10); // TODO: calculate capacity better;
 
         Self {
             datum,
             title: title.into(),
+            range,
         }
     }
 }
 
 impl Instrument {
     // TODO: pass times here rather than storing them in state
-    pub fn view<'s, Message: 's>(&'s mut self, time: &'s StationTime) -> InstrumentChart {
-        InstrumentChart(self, time)
+    pub fn view<'s, Message: 's>(
+        &'s mut self,
+        time: &'s StationTime,
+        time_base: TimeBase,
+    ) -> InstrumentChart {
+        InstrumentChart(self, time, time_base)
     }
 
     pub fn add_datum(&mut self) {
@@ -122,12 +129,24 @@ impl<'a, Message: 'a> Into<Element<'a, Message>> for InstrumentChart<'a> {
     }
 }
 
-pub struct InstrumentChart<'i>(&'i mut Instrument, &'i StationTime);
+#[derive(Debug)]
+pub struct InstrumentChart<'i>(&'i mut Instrument, &'i StationTime, TimeBase);
 
 impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
     #[inline]
     fn build_chart<DB: DrawingBackend>(&self, mut builder: ChartBuilder<DB>) {
-        let Self(instrument, time) = self;
+        let InstrumentChart(instrument, time, time_base) = self;
+
+        let x_range = {
+            let current_time = time.get_elapsed(*time_base);
+
+            let current_seconds = current_time.as_seconds_f64();
+
+            let x_min = (current_seconds - instrument.range).max(0.0);
+            let x_max = current_seconds.max(instrument.range);
+
+            x_min..x_max
+        };
 
         // After this point, we should be able to draw construct a chart context
         let mut chart = builder
@@ -143,7 +162,7 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
             .x_label_area_size(25)
             .y_label_area_size(40)
             // Finally attach a coordinate on the drawing area and make a chart context
-            .build_cartesian_2d(0f32..10f32, 0f32..10f32)
+            .build_cartesian_2d(x_range, 0f64..10f64)
             .unwrap();
 
         let axis_label_style = FontDesc::new(FontFamily::SansSerif, 12.0, FontStyle::Normal)
@@ -180,7 +199,7 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
         chart
             .draw_series(LineSeries::new(
                 (0..=100)
-                    .map(|x| x as f32 / 10.0)
+                    .map(|x| x as f64 / 10.0)
                     .map(|x| (x, x.sin() * 5.0 + 5.0)),
                 &GREEN,
             ))

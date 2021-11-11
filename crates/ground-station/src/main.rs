@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use chart::{Instrument, StationTime};
+use chart::{Instrument, StationTime, TimeBase};
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
@@ -50,6 +50,7 @@ struct InstrumentCluster {
     window_size: (u32, u32),
 
     time: StationTime,
+    time_base: TimeBase,
 
     charts: Charts,
 
@@ -71,8 +72,8 @@ fn format_duration(duration: time::Duration) -> String {
     format!(
         "{:02}:{:02}:{:02}.{:01}",
         duration.whole_hours(),
-        duration.whole_minutes(),
-        duration.whole_seconds(),
+        duration.whole_minutes() % 60,
+        duration.whole_seconds() % 60,
         duration.subsec_milliseconds() / 100
     )
 }
@@ -91,22 +92,23 @@ impl Application for InstrumentCluster {
                 window_size: (0, 0),
 
                 charts: Charts {
-                    c00: Instrument::new("00"),
-                    c01: Instrument::new("01"),
-                    c02: Instrument::new("02"),
-                    c03: Instrument::new("03"),
-                    c04: Instrument::new("04"),
-                    c10: Instrument::new("10"),
-                    c20: Instrument::new("20"),
-                    c30: Instrument::new("30"),
-                    c40: Instrument::new("40"),
-                    c41: Instrument::new("41"),
-                    c42: Instrument::new("42"),
-                    c43: Instrument::new("43"),
-                    c44: Instrument::new("44"),
+                    c00: Instrument::new("00", 10.0),
+                    c01: Instrument::new("01", 10.0),
+                    c02: Instrument::new("02", 10.0),
+                    c03: Instrument::new("03", 10.0),
+                    c04: Instrument::new("04", 10.0),
+                    c10: Instrument::new("10", 10.0),
+                    c20: Instrument::new("20", 10.0),
+                    c30: Instrument::new("30", 10.0),
+                    c40: Instrument::new("40", 10.0),
+                    c41: Instrument::new("41", 10.0),
+                    c42: Instrument::new("42", 10.0),
+                    c43: Instrument::new("43", 10.0),
+                    c44: Instrument::new("44", 10.0),
                 },
 
                 time: StationTime::setup(),
+                time_base: TimeBase::GroundControl,
 
                 quit_button: button::State::default(),
                 fullscreen_button: button::State::default(),
@@ -219,9 +221,9 @@ impl Application for InstrumentCluster {
                                 .align_items(Align::Center)
                                 .spacing(2),
                         )
-                        .push(self.charts.c10.view::<Self::Message>(&self.time))
-                        .push( self.charts.c20.view::<Self::Message>(&self.time))
-                        .push( self.charts.c30.view::<Self::Message>(&self.time))
+                        .push(self.charts.c10.view::<Self::Message>(&self.time, self.time_base))
+                        .push( self.charts.c20.view::<Self::Message>(&self.time, self.time_base))
+                        .push( self.charts.c30.view::<Self::Message>(&self.time,self.time_base))
                         .push(
                             Column::new()
                                 .push(Space::new(Length::Shrink, Length::Fill))
@@ -301,10 +303,10 @@ impl Application for InstrumentCluster {
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .spacing(10)
-                                .push(self.charts.c01.view::<Self::Message>(&self.time))
-                                .push(self.charts.c02.view::<Self::Message>(&self.time))
-                                .push(self.charts.c03.view::<Self::Message>(&self.time))
-                                .push(self.charts.c04.view::<Self::Message>(&self.time)),
+                                .push(self.charts.c01.view::<Self::Message>(&self.time, self.time_base))
+                                .push(self.charts.c02.view::<Self::Message>(&self.time, self.time_base))
+                                .push(self.charts.c03.view::<Self::Message>(&self.time,self.time_base))
+                                .push(self.charts.c04.view::<Self::Message>(&self.time,self.time_base)),
                         )
                         .push(
                             Container::new(
@@ -369,10 +371,10 @@ impl Application for InstrumentCluster {
                                 .width(Length::Fill)
                                 .height(Length::Fill)
                                 .spacing(10)
-                                .push(self.charts.c41.view::<Self::Message>(&self.time))
-                                .push(self.charts.c42.view::<Self::Message>(&self.time))
-                                .push(self.charts.c43.view::<Self::Message>(&self.time))
-                                .push(self.charts.c44.view::<Self::Message>(&self.time)),
+                                .push(self.charts.c41.view::<Self::Message>(&self.time,self.time_base))
+                                .push(self.charts.c42.view::<Self::Message>(&self.time,self.time_base))
+                                .push(self.charts.c43.view::<Self::Message>(&self.time,self.time_base))
+                                .push(self.charts.c44.view::<Self::Message>(&self.time,self.time_base)),
                         ),
                 ),
         )
