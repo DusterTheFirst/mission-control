@@ -13,7 +13,7 @@ use crate::style;
 pub struct Instrument {
     datum: Vec<()>,
     title: String,
-    range: f64,
+    width: f64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -88,13 +88,13 @@ impl StationTime {
 }
 
 impl Instrument {
-    pub fn new<S: Into<String>>(title: S, range: f64) -> Self {
-        let datum = Vec::with_capacity(1 << 10); // TODO: calculate capacity better;
+    pub fn new<S: Into<String>>(title: S, width: f64, samples_per_second: f64) -> Self {
+        let datum = Vec::with_capacity((width * samples_per_second).round() as usize); // TODO: calculate capacity better;
 
         Self {
             datum,
             title: title.into(),
-            range,
+            width,
         }
     }
 }
@@ -111,10 +111,10 @@ impl Instrument {
 
     pub fn add_datum(&mut self) {
         // TODO:
+        todo!()
     }
 }
 
-// TODO: ownership?
 impl<'a, Message: 'a> Into<Element<'a, Message>> for InstrumentChart<'a> {
     fn into(self) -> Element<'a, Message> {
         Container::new(
@@ -142,8 +142,8 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
 
             let current_seconds = current_time.as_seconds_f64();
 
-            let x_min = (current_seconds - instrument.range).max(0.0);
-            let x_max = current_seconds.max(instrument.range);
+            let x_min = (current_seconds - instrument.width).max(0.0);
+            let x_max = current_seconds.max(instrument.width);
 
             x_min..x_max
         };
