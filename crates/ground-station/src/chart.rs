@@ -1,5 +1,6 @@
 use std::{fmt::Debug, sync::Once};
 
+use atomicring::AtomicRingBuffer;
 use iced::{Container, Element, Length};
 use plotters::prelude::*;
 
@@ -11,7 +12,7 @@ use crate::style;
 
 #[derive(Debug)]
 pub struct Instrument {
-    datum: Vec<()>,
+    datum: AtomicRingBuffer<()>,
     title: String,
     width: f64,
 }
@@ -89,7 +90,7 @@ impl StationTime {
 
 impl Instrument {
     pub fn new<S: Into<String>>(title: S, width: f64, samples_per_second: f64) -> Self {
-        let datum = Vec::with_capacity((width * samples_per_second).round() as usize); // TODO: calculate capacity better;
+        let datum = AtomicRingBuffer::with_capacity((width * samples_per_second).round() as usize);
 
         Self {
             datum,
@@ -109,9 +110,8 @@ impl Instrument {
         InstrumentChart(self, time, time_base)
     }
 
-    pub fn add_datum(&mut self) {
-        // TODO:
-        todo!()
+    pub fn add_datum(&mut self, datum: ()) {
+        self.datum.push_overwrite(datum);
     }
 }
 

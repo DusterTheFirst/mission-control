@@ -223,6 +223,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "065374052e7df7ee4047b1160cca5e1467a12351a40b3da123c870ba0b8eda2a"
 
 [[package]]
+name = "atomicring"
+version = "1.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc2dd49de6275466864479609b707199774e4e682405b363871fca0f2b5ea24f"
+dependencies = [
+ "parking_lot",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1222,6 +1231,7 @@ name = "ground-station"
 version = "0.0.0"
 dependencies = [
  "async-std",
+ "atomicring",
  "iced",
  "iced_native",
  "paste",
