@@ -1,8 +1,31 @@
+[package]
+name = "ground-station"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+iced_native = "0.4.0"
+async-std = "1.10.0"
+plotters = "0.3.1"
+plotters-backend = "0.3.2"
+plotters-iced = "0.1.4"
+tracing = "0.1.29"
+tracing-subscriber = "0.3.1"
+paste = "1.0.6"
+atomicring = "1.2.9"
+rusb = "0.9.0"
+proto = { path = "crates/proto" }
+
+[dependencies.iced]
+version = "0.3.0"
+default-features = false
+features = ["async-std", "glow_canvas", "glow", "debug"]
+
+[dependencies.time]
+version = "0.3.5"
+features = ["formatting", "macros", "local-offset"]
+
 [workspace]
-members = ["crates/*"]
 
 [profile.dev.package."*"]
 opt-level = 2
-
-[patch.crates-io]
-plotters-iced = { path = "../plotters-iced/" }

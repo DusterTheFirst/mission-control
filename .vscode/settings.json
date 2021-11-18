@@ -3,6 +3,8 @@
         "atomicring",
         "eframe",
         "egui",
+        "proto",
+        "rusb",
         "subsec",
         "TSLP",
         "twox",

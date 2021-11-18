@@ -169,13 +169,12 @@ pub mod colors {
         }
     }
 
-    impl plotters_backend::BackendStyle for Color {
-        fn color(&self) -> plotters_backend::BackendColor {
+    impl plotters::style::Color for Color {
+        fn to_backend_color(&self) -> plotters_backend::BackendColor {
             plotters_backend::BackendColor {
                 alpha: 1.0,
                 rgb: (self.r, self.g, self.b),
             }
         }
     }
-    impl plotters::style::Color for Color {}
 }
