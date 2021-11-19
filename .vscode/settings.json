@@ -3,6 +3,8 @@
         "atomicring",
         "eframe",
         "egui",
+        "Hotplug",
+        "libusb",
         "proto",
         "rusb",
         "subsec",

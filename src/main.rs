@@ -10,31 +10,87 @@ use iced::{
     HorizontalAlignment, Length, Row, Settings, Space, Subscription, Text, Tooltip,
 };
 use iced_native::{event, subscription, Event};
+use rusb::{Language, PrimaryLanguage, Speed};
 use time::macros::format_description;
+use tracing::trace;
+use tracing_subscriber::EnvFilter;
 
 mod chart;
 mod style;
 
 pub fn main() -> iced::Result {
-    tracing_subscriber::fmt().pretty().init();
+    dotenv::dotenv().ok();
+    tracing_subscriber::fmt()
+        .pretty()
+        .with_env_filter(EnvFilter::from_default_env())
+        .init();
+
+    let version = rusb::version();
+    trace!(
+        "using libusb v{}.{}.{}.{}{}",
+        version.major(),
+        version.minor(),
+        version.micro(),
+        version.nano(),
+        version.rc().unwrap_or("")
+    );
+    if cfg!(windows) {
+        // Notify me once I can use hotplug
+        assert!(
+            rusb::has_capability(),
+            "libusb does not support capability checks"
+        );
+        assert_eq!(
+            rusb::has_hotplug(),
+            false,
+            "libusb has gained support for hotplug on windows"
+        );
+        assert_eq!(
+            rusb::supports_detach_kernel_driver(),
+            false,
+            "libusb has gained support for detaching the kernel driver on windows"
+        );
+    }
 
     for device in rusb::devices().unwrap().iter() {
         let device_desc = device.device_descriptor().unwrap();
 
         println!(
-            "Bus {:03} Device {:03} ID {:04x}:{:04x}",
+            "Bus {:03} Device {:03} ID {:04x}:{:04x} | Speed: {}",
             device.bus_number(),
             device.address(),
             device_desc.vendor_id(),
-            device_desc.product_id()
+            device_desc.product_id(),
+            match device.speed() {
+                Speed::SuperPlus => " 10 Gbps",
+                Speed::Super => "  5 Gbps",
+                Speed::High => "480 Mbps",
+                Speed::Full => " 12 Mbps",
+                Speed::Low => "1.5 Mbps",
+                _ => "(unknown)",
+            }
         );
 
         if device_desc.vendor_id() == proto::phy::usb::VID
             && device_desc.product_id() == proto::phy::usb::PID
         {
-            println!("AAAAA");
+            dbg!(device_desc.device_version());
+            // dbg!(device.active_config_descriptor().unwrap().interfaces().collect::<Vec<_>>());
+
+            let mut handle = device.open().unwrap();
+            handle.set_auto_detach_kernel_driver(true).ok();
+
+            let manufacturer = handle.read_manufacturer_string_ascii(&device_desc).ok();
+            let product = handle.read_product_string_ascii(&device_desc).ok();
+            let serial_number = handle.read_serial_number_string_ascii(&device_desc).ok();
+
+            dbg!(manufacturer, product, serial_number);
+
+            handle.claim_interface(0).unwrap();
         }
     }
+
+    return Ok(());
 
     InstrumentCluster::run(Settings {
         antialiasing: true,
