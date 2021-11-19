@@ -10,9 +10,10 @@ use iced::{
     HorizontalAlignment, Length, Row, Settings, Space, Subscription, Text, Tooltip,
 };
 use iced_native::{event, subscription, Event};
-use rusb::{Language, PrimaryLanguage, Speed};
+use mio_serial::{SerialPort, SerialPortBuilder};
+use serialport::{SerialPortType, UsbPortInfo};
 use time::macros::format_description;
-use tracing::trace;
+use tracing::{error, info, trace};
 use tracing_subscriber::EnvFilter;
 
 mod chart;
@@ -25,70 +26,37 @@ pub fn main() -> iced::Result {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
-    let version = rusb::version();
-    trace!(
-        "using libusb v{}.{}.{}.{}{}",
-        version.major(),
-        version.minor(),
-        version.micro(),
-        version.nano(),
-        version.rc().unwrap_or("")
-    );
-    if cfg!(windows) {
-        // Notify me once I can use hotplug
-        assert!(
-            rusb::has_capability(),
-            "libusb does not support capability checks"
-        );
-        assert_eq!(
-            rusb::has_hotplug(),
-            false,
-            "libusb has gained support for hotplug on windows"
-        );
-        assert_eq!(
-            rusb::supports_detach_kernel_driver(),
-            false,
-            "libusb has gained support for detaching the kernel driver on windows"
-        );
-    }
-
-    for device in rusb::devices().unwrap().iter() {
-        let device_desc = device.device_descriptor().unwrap();
-
-        println!(
-            "Bus {:03} Device {:03} ID {:04x}:{:04x} | Speed: {}",
-            device.bus_number(),
-            device.address(),
-            device_desc.vendor_id(),
-            device_desc.product_id(),
-            match device.speed() {
-                Speed::SuperPlus => " 10 Gbps",
-                Speed::Super => "  5 Gbps",
-                Speed::High => "480 Mbps",
-                Speed::Full => " 12 Mbps",
-                Speed::Low => "1.5 Mbps",
-                _ => "(unknown)",
+    let device = mio_serial::available_ports()
+        .unwrap()
+        .into_iter()
+        .find_map(|port| match port.port_type {
+            SerialPortType::UsbPort(usb) => {
+                if usb.vid == proto::phy::usb::VID && usb.pid == proto::phy::usb::PID {
+                    Some((port.port_name, usb))
+                } else {
+                    None
+                }
             }
-        );
+            _ => None,
+        });
 
-        if device_desc.vendor_id() == proto::phy::usb::VID
-            && device_desc.product_id() == proto::phy::usb::PID
-        {
-            dbg!(device_desc.device_version());
-            // dbg!(device.active_config_descriptor().unwrap().interfaces().collect::<Vec<_>>());
-
-            let mut handle = device.open().unwrap();
-            handle.set_auto_detach_kernel_driver(true).ok();
-
-            let manufacturer = handle.read_manufacturer_string_ascii(&device_desc).ok();
-            let product = handle.read_product_string_ascii(&device_desc).ok();
-            let serial_number = handle.read_serial_number_string_ascii(&device_desc).ok();
-
-            dbg!(manufacturer, product, serial_number);
-
-            handle.claim_interface(0).unwrap();
-        }
+    if let Some((
+        port,
+        UsbPortInfo {
+            serial_number,
+            manufacturer,
+            product,
+            ..
+        },
+    )) = device
+    {
+        trace!(?manufacturer, ?product, ?serial_number, "Connecting to board");
+        mio_serial::new(port, 0);
+    } else {
+        error!("No board connected");
     }
+
+    // bro, i should just use linux what the fuck is this
 
     return Ok(());
 
