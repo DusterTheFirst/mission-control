@@ -8,84 +8,16 @@ use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 use time::{Duration, OffsetDateTime, Time};
 use tracing::{error, warn};
 
-use crate::style;
+use crate::{
+    station_time::{StationTime, TimeBase},
+    style,
+};
 
 #[derive(Debug)]
 pub struct Instrument {
     datum: AtomicRingBuffer<()>,
     title: String,
     width: f64,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct StationTime {
-    pub now: OffsetDateTime,
-    pub ground_control_on: OffsetDateTime,
-    pub vehicle_on: Option<OffsetDateTime>,
-    pub mission_start: Option<OffsetDateTime>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum TimeBase {
-    GroundControl,
-    VehicleOn,
-    Mission,
-}
-
-impl StationTime {
-    /// Get the current date time in the local timezone or in UTC
-    /// if the local timezone could not be determined
-    fn now() -> OffsetDateTime {
-        static ONCE: Once = Once::new();
-
-        OffsetDateTime::now_local().unwrap_or_else(|e| {
-            ONCE.call_once(|| {
-                error!("{}", e);
-                warn!("Using UTC for local time");
-            });
-
-            OffsetDateTime::now_utc()
-        })
-    }
-
-    /// Quantize an `OffsetDateTime` to the nearest second
-    ///
-    /// This is useful to make sure times on the display will update together
-    fn quantize(date_time: OffsetDateTime) -> OffsetDateTime {
-        date_time.replace_time(
-            Time::from_hms(date_time.hour(), date_time.minute(), date_time.second()).unwrap(),
-        )
-    }
-
-    pub fn setup() -> Self {
-        let now = Self::now();
-
-        Self {
-            now,
-            // Artificially sync the local time with the ground control time
-            ground_control_on: Self::quantize(now),
-            vehicle_on: None,
-            mission_start: None,
-        }
-    }
-
-    pub fn get_elapsed(&self, time_base: TimeBase) -> Duration {
-        match time_base {
-            TimeBase::GroundControl => self.now - self.ground_control_on,
-            TimeBase::VehicleOn => self
-                .vehicle_on
-                .map(|vehicle_on| self.now - vehicle_on)
-                .unwrap_or(Duration::ZERO),
-            TimeBase::Mission => self
-                .mission_start
-                .map(|mission_start| self.now - mission_start)
-                .unwrap_or(Duration::ZERO),
-        }
-    }
-
-    pub fn update(&mut self) {
-        self.now = Self::now();
-    }
 }
 
 impl Instrument {
@@ -101,7 +33,6 @@ impl Instrument {
 }
 
 impl Instrument {
-    // TODO: pass times here rather than storing them in state
     pub fn view<'s, Message: 's>(
         &'s mut self,
         time: &'s StationTime,
