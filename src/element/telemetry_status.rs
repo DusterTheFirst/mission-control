@@ -4,7 +4,8 @@ use interlink::phy::InterlinkMethod;
 use crate::{
     element::mono_label_text_tooltip,
     station_time::{format_duration, StationTime},
-    style, Message,
+    style::{self, colors::Color},
+    Message,
 };
 
 pub fn telemetry_status(
@@ -25,12 +26,26 @@ pub fn telemetry_status(
         .into()
 }
 
+fn interpolate_error_color(progress: f32) -> Color {
+    let error_progress = progress.clamp(0.0, 1.0);
+    let warn_progress = 1.0 - progress;
+
+    let error = style::colors::ERROR;
+    let warn = style::colors::WARNING;
+
+    Color::from_rgb(
+        (warn.r as f32 * warn_progress + error.r as f32 * error_progress).clamp(0.0, 255.0) as u8,
+        (warn.g as f32 * warn_progress + error.g as f32 * error_progress).clamp(0.0, 255.0) as u8,
+        (warn.b as f32 * warn_progress + error.b as f32 * error_progress).clamp(0.0, 255.0) as u8,
+    )
+}
+
 fn time_since_last_packet(station_time: StationTime) -> Element<'static, Message> {
     let (time_since_last_packet, color) =
         if let Some(time_since_last_packet) = station_time.time_since_last_packet() {
             let color = match time_since_last_packet.whole_milliseconds() {
-                0..=100 => style::colors::TEXT,
-                101..=1000 => style::colors::WARNING,
+                0..=500 => style::colors::GOOD,
+                i @ 501..=2500 => interpolate_error_color((i - 500) as f32 / 2000.0),
                 _ => style::colors::ERROR,
             };
 
@@ -65,7 +80,7 @@ fn interlink_method(interlink: Option<InterlinkMethod>) -> Element<'static, Mess
     mono_label_text_tooltip(
         "Interlink",
         interlink,
-        "Method of Communication to the Device",
+        "Method of Communication to the Vehicle",
         Some(color),
     )
 }

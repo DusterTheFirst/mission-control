@@ -126,6 +126,7 @@ pub mod fonts {
 pub mod colors {
     pub const TEXT: Color = Color::from_rgb(0xEE, 0xEE, 0xEE);
     pub const SECONDARY_TEXT: Color = Color::from_rgb(0x88, 0x88, 0x88);
+    pub const GOOD: Color = Color::from_rgb(0x00, 0xEE, 0x00);
     pub const WARNING: Color = Color::from_rgb(0xEE, 0xEE, 0x00);
     pub const ERROR: Color = Color::from_rgb(0xEE, 0x00, 0x00);
 
@@ -141,9 +142,9 @@ pub mod colors {
     pub const AXIS: Color = Color::from_rgb(0xEE, 0xEE, 0xEE);
 
     pub struct Color {
-        r: u8,
-        g: u8,
-        b: u8,
+        pub r: u8,
+        pub g: u8,
+        pub b: u8,
     }
 
     impl Color {

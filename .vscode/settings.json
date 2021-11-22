@@ -1,9 +1,11 @@
 {
     "cSpell.words": [
+        "allocvec",
         "atomicring",
         "defmt",
         "eframe",
         "egui",
+        "heapless",
         "Hotplug",
         "libusb",
         "proto",

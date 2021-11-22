@@ -44,10 +44,10 @@ impl Instrument {
     }
 }
 
-impl<'a, Message: 'a> Into<Element<'a, Message>> for InstrumentChart<'a> {
-    fn into(self) -> Element<'a, Message> {
+impl<'a, Message: 'a> From<InstrumentChart<'a>> for Element<'a, Message> {
+    fn from(element: InstrumentChart<'a>) -> Self {
         Container::new(
-            ChartWidget::new(self)
+            ChartWidget::new(element)
                 .width(Length::Fill)
                 .height(Length::Fill),
         )

@@ -1,9 +1,9 @@
-use std::{collections::VecDeque, hash::Hash, io::ErrorKind, thread, time::Duration};
+use std::{collections::VecDeque, hash::Hash, thread, time::Duration};
 
 use flume::{Receiver, Sender};
 use iced::{futures::stream::BoxStream, Subscription};
 use iced_native::subscription::Recipe;
-use interlink::{phy, proto::Packet};
+use interlink::{phy, proto::PacketDown};
 use serialport::{SerialPort, SerialPortType};
 use tracing::{debug, error, trace, warn};
 
@@ -12,9 +12,9 @@ pub struct SerialSubscription {
     receiver: Receiver<SerialEvent>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum SerialEvent {
-    PacketReceived { packet: Packet },
+    PacketReceived,
     Connected,
     Disconnected,
 }
@@ -59,13 +59,17 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
             debug!("Searching for board");
         }
 
-        let device = try_find_serial_port();
+        let port = try_find_serial_port();
 
-        if let Some(port) = device {
+        if let Some(port) = port {
             trace!("Connecting to board");
-            let mut port = serialport::new(port, 0)
-                .open()
-                .expect("unable to open serial port");
+            let mut port = match serialport::new(port, 0).open() {
+                Ok(port) => port,
+                Err(error) => {
+                    error!(%error, "Unable to open serial port");
+                    continue;
+                }
+            };
 
             debug!("Connected to board");
 
@@ -73,7 +77,10 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
 
             port.write_data_terminal_ready(true).unwrap();
 
-            read_data_from_serial_port(port.as_mut(), &sender);
+            match read_data_from_serial_port(port.as_mut(), &sender) {
+                Ok(()) => {}
+                Err(error) => error!(%error, "Failed to communicate to serial port"),
+            }
 
             // Set the DTR signal low if performing a graceful shutdown
             port.write_data_terminal_ready(false).ok();
@@ -94,40 +101,59 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
     }
 }
 
-fn read_data_from_serial_port(port: &mut dyn SerialPort, sender: &Sender<SerialEvent>) {
-    let mut all_data = VecDeque::<u8>::with_capacity(2048);
-    let mut buffer = [0u8; 1028];
+fn read_data_from_serial_port(
+    port: &mut dyn SerialPort,
+    sender: &Sender<SerialEvent>,
+) -> std::io::Result<()> {
+    let mut data_storage = VecDeque::with_capacity(2048);
+
+    // match port.write_all(
+    //     postcard::to_allocvec_cobs(&PacketUp::Welcome)
+    //         .unwrap()
+    //         .as_slice(),
+    // ) {
+    //     Ok(()) => {}
+    //     Err(e) => match e.kind() {
+    //         ErrorKind::TimedOut => {
+    //             warn!("Serial port not connected");
+    //             return;
+    //         }
+    //         _ => panic!("{}", e),
+    //     },
+    // }
 
     loop {
-        let new_data = match port.read(&mut buffer[..]) {
-            Ok(amount) => &buffer[..amount],
-            Err(e) => match e.kind() {
-                ErrorKind::TimedOut => {
-                    warn!("Serial port disconnected");
-                    break;
-                }
-                _ => {
-                    panic!("{}", e);
-                }
-            },
-        };
+        let mut input = [0u8; 64];
 
-        // Push the new data into the queue
-        all_data.extend(new_data);
-        let len = all_data.len();
+        let bytes_to_read = (port.bytes_to_read()? as usize).min(input.len());
 
-        match postcard::take_from_bytes_cobs::<Packet>(all_data.make_contiguous()) {
-            Ok((packet, leftovers)) => {
-                for _ in 0..len - leftovers.len() {
-                    all_data.pop_back(); // TODO: what the fuck is this
+        if bytes_to_read > 0 {
+            let amount = port.read(&mut input[..bytes_to_read])?;
+            data_storage.extend(&input[..amount]);
+        }
+
+        while !data_storage.is_empty() {
+            let contiguous = data_storage.make_contiguous();
+            let len = contiguous.len();
+            match postcard::take_from_bytes_cobs::<PacketDown>(contiguous) {
+                Ok((packet, leftovers)) => {
+                    dbg!(packet);
+
+                    let length = len - leftovers.len();
+
+                    for _ in 0..length {
+                        data_storage.pop_front(); // TODO: what the fuck is this
+                    }
+                    // Get rid of trailing null
+                    data_storage.pop_front();
+
+                    sender.send(SerialEvent::PacketReceived).unwrap(); // TODO: error handle
                 }
-
-                sender.send(SerialEvent::PacketReceived { packet }).unwrap(); // TODO: error handle
-            }
-            Err(postcard::Error::DeserializeUnexpectedEnd) => continue,
-            Err(error) => {
-                error!(?error, "Failed to deserialize data");
-                break;
+                Err(postcard::Error::DeserializeUnexpectedEnd) => break,
+                Err(error) => {
+                    error!(%error, "Failed to deserialize data");
+                    return Ok(());
+                }
             }
         }
     }

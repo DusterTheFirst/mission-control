@@ -73,7 +73,7 @@ struct InstrumentCluster {
     fullscreen_button: button::State,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Message {
     Quit,
     Refresh,
@@ -152,7 +152,7 @@ impl Application for InstrumentCluster {
             Message::WindowFocusChange { focused } => self.window_focused = focused,
             Message::WindowSizeChange { width, height } => self.window_size = (width, height),
             Message::Refresh => { /* TODO: replace with something better? */ }
-            Message::SerialEvent(SerialEvent::PacketReceived { packet }) => {
+            Message::SerialEvent(SerialEvent::PacketReceived) => {
                 self.time.packet_received();
                 // trace!(?packet);
             }
@@ -171,9 +171,7 @@ impl Application for InstrumentCluster {
 
     fn subscription(&self) -> Subscription<Self::Message> {
         Subscription::batch([
-            self.serial
-                .subscription()
-                .map(|event| Message::SerialEvent(event)),
+            self.serial.subscription().map(Message::SerialEvent),
             // TODO: update differently
             iced::time::every(Duration::from_millis(50)).map(|_| Message::Refresh),
             subscription::events_with(|event, status| match (event, status) {
