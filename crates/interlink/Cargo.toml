@@ -1,0 +1,8 @@
+[package]
+name = "interlink"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.130", features = ["derive"], default-features = false }
+defmt = { version = "0.3.0", optional = true }
