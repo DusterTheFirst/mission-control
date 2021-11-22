@@ -1,12 +1,10 @@
-use std::{fmt::Debug, sync::Once};
+use std::fmt::Debug;
 
 use atomicring::AtomicRingBuffer;
 use iced::{Container, Element, Length};
 use plotters::prelude::*;
 
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
-use time::{Duration, OffsetDateTime, Time};
-use tracing::{error, warn};
 
 use crate::{
     station_time::{StationTime, TimeBase},

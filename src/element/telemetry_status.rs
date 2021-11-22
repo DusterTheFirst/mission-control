@@ -16,12 +16,6 @@ pub fn telemetry_status(
         .push(Text::new("Telemetry").size(32))
         .push(Space::new(Length::Shrink, Length::Units(16)))
         .push(time_since_last_packet(station_time))
-        .push(mono_label_text_tooltip(
-            "RSSI",
-            "TODO:",
-            "Received Signal Strength Indicator",
-            None,
-        ))
         .push(interlink_method(interlink))
         .push(Space::new(Length::Shrink, Length::Fill))
         .width(Length::Fill)
@@ -59,6 +53,15 @@ fn interlink_method(interlink: Option<InterlinkMethod>) -> Element<'static, Mess
         None => ("None", style::colors::SECONDARY_TEXT),
     };
 
+    // TODO: show only when using communication method where matters
+    // mono_label_text_tooltip(
+    //         "RSSI",
+    //         "TODO:",
+    //         "Received Signal Strength Indicator",
+    //         None,
+    // )
+
+    // TODO: other information?
     mono_label_text_tooltip(
         "Interlink",
         interlink,

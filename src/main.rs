@@ -5,21 +5,17 @@ use element::instrument::Instrument;
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
-    tooltip::Position,
     window::{self, Mode},
     Align, Application, Button, Clipboard, Color, Column, Command, Container, Element,
-    HorizontalAlignment, Length, Row, Settings, Space, Subscription, Text, Tooltip,
+    HorizontalAlignment, Length, Row, Settings, Subscription, Text,
 };
 use iced_native::{event, subscription, Event};
 use interlink::phy::InterlinkMethod;
 use station_time::{StationTime, TimeBase};
-use time::macros::format_description;
-use tracing::trace;
 use tracing_subscriber::EnvFilter;
 
-use crate::{
-    element::{ground_station_status::ground_station_status, telemetry_status::telemetry_status},
-    station_time::format_duration,
+use crate::element::{
+    ground_station_status::ground_station_status, telemetry_status::telemetry_status,
 };
 
 mod comm;

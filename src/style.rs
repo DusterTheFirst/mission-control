@@ -121,13 +121,6 @@ pub mod fonts {
             Thin,
             ThinItalic
     }
-
-    // pub mod roboto_mono {
-    //     pub static REGULAR: iced::Font = iced::Font::External {
-    //         name: "Roboto Mono",
-    //         bytes: include_bytes!("../fonts/roboto_mono/static/RobotoMono-Regular.ttf"),
-    //     };
-    // }
 }
 
 pub mod colors {
