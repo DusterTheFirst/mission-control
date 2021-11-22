@@ -45,13 +45,13 @@ fn time_since_last_packet(station_time: StationTime) -> Element<'static, Message
         if let Some(time_since_last_packet) = station_time.time_since_last_packet() {
             let color = match time_since_last_packet.whole_milliseconds() {
                 0..=500 => style::colors::GOOD,
-                i @ 501..=2500 => interpolate_error_color((i - 500) as f32 / 2000.0),
+                i @ 501..=5000 => interpolate_error_color((i - 500) as f32 / 5000.0),
                 _ => style::colors::ERROR,
             };
 
             (format_duration(time_since_last_packet), color)
         } else {
-            ("--:--:--.-".to_string(), style::colors::SECONDARY_TEXT) // TODO: specific color for this
+            ("--:--:--.-".to_string(), style::colors::SECONDARY_TEXT)
         };
 
     mono_label_text_tooltip(
@@ -74,6 +74,14 @@ fn interlink_method(interlink: Option<InterlinkMethod>) -> Element<'static, Mess
     //         "TODO:",
     //         "Received Signal Strength Indicator",
     //         None,
+    // )
+
+    // TODO:
+    // mono_label_text_tooltip(
+    //     "Data Rate",
+    //     "???",
+    //     "Packets Received per Second",
+    //     Some(style::colors::WARNING),
     // )
 
     // TODO: other information?
