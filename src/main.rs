@@ -10,9 +10,11 @@ use iced::{
     HorizontalAlignment, Length, Row, Settings, Subscription, Text,
 };
 use iced_native::{event, subscription, Event};
+use insomnia::Lock;
 use interlink::phy::InterlinkMethod;
 use station_time::{StationTime, TimeBase};
 use tracing_subscriber::EnvFilter;
+use util::inhibit_sleep;
 
 use crate::element::{
     ground_station_status::ground_station_status, telemetry_status::telemetry_status,
@@ -22,6 +24,7 @@ mod comm;
 mod element;
 mod station_time;
 mod style;
+mod util;
 
 pub fn main() -> iced::Result {
     dotenv::dotenv().ok();
@@ -29,6 +32,8 @@ pub fn main() -> iced::Result {
         .pretty()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    // TODO: inhibit sleep
 
     InstrumentCluster::run(Settings {
         antialiasing: true,
@@ -54,7 +59,6 @@ struct Charts {
     c44: Instrument,
 }
 
-#[derive(Debug)]
 struct InstrumentCluster {
     quit: bool,
     window_focused: bool,
@@ -71,6 +75,9 @@ struct InstrumentCluster {
 
     quit_button: button::State,
     fullscreen_button: button::State,
+
+    #[allow(dead_code)]
+    sleep_lock: Option<Box<dyn Lock>>,
 }
 
 #[derive(Debug, Clone)]
@@ -120,6 +127,8 @@ impl Application for InstrumentCluster {
 
                 quit_button: button::State::default(),
                 fullscreen_button: button::State::default(),
+
+                sleep_lock: inhibit_sleep(),
             },
             Command::none(),
         )

@@ -18,6 +18,7 @@ serialport = "4.0.1"
 flume = "0.10.9"
 postcard = { version = "0.7.2", features = ["use-std", "alloc"] }
 interlink = { path = "crates/interlink" }
+insomnia = { git = "https://github.com/blm768/insomnia", rev = "479d4b66251fb82bcdf026f4e0a840c71076a3ba" }
 
 [dependencies.iced]
 version = "0.3.0"
