@@ -27,7 +27,7 @@ pub(self) fn mono_label_text_tooltip<T: Into<String>>(
                 text
             }),
         tooltip,
-        Position::FollowCursor,
+        Position::Top,
     )
     .style(style::Tooltip)
     .into()

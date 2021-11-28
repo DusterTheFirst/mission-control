@@ -88,7 +88,7 @@ fn interlink_method(interlink: Option<InterlinkMethod>) -> Element<'static, Mess
     mono_label_text_tooltip(
         "Interlink",
         interlink,
-        "Method of Communication to the Vehicle",
+        "Physical Method of Communication",
         Some(color),
     )
 }
