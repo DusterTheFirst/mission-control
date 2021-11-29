@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 
-use atomicring::AtomicRingBuffer;
+use heapless::HistoryBuffer;
 use iced::{Container, Element, Length};
 use plotters::prelude::*;
 
@@ -12,40 +12,38 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Instrument {
-    datum: AtomicRingBuffer<()>,
+pub struct Instrument<D, const WIDTH: isize> {
+    datum: HistoryBuffer<D, WIDTH>,
     title: String,
-    width: f64,
 }
 
-impl Instrument {
-    pub fn new<S: Into<String>>(title: S, width: f64, samples_per_second: f64) -> Self {
-        let datum = AtomicRingBuffer::with_capacity((width * samples_per_second).round() as usize);
+impl<D, const WIDTH: i32> Instrument<D, WIDTH> {
+    pub fn new<S: Into<String>>(title: S) -> Self {
+        let datum = HistoryBuffer::with_capacity();
 
         Self {
             datum,
             title: title.into(),
-            width,
         }
     }
-}
 
-impl Instrument {
     pub fn view<'s, Message: 's>(
         &'s mut self,
         time: &'s StationTime,
         time_base: TimeBase,
-    ) -> InstrumentChart {
+    ) -> InstrumentChart<D, WIDTH> {
         InstrumentChart(self, time, time_base)
     }
 
-    pub fn add_datum(&mut self, datum: ()) {
+    pub fn add_datum(&mut self, datum: D) {
         self.datum.push_overwrite(datum);
     }
 }
 
-impl<'a, Message: 'a> From<InstrumentChart<'a>> for Element<'a, Message> {
-    fn from(element: InstrumentChart<'a>) -> Self {
+impl<'a, Message: 'a, D, const WIDTH: i32> From<InstrumentChart<'a, D, WIDTH>>
+    for Element<'a, Message>
+{
+    fn from(element: InstrumentChart<'a, D, WIDTH>) -> Self {
         Container::new(
             ChartWidget::new(element)
                 .width(Length::Fill)
@@ -59,9 +57,13 @@ impl<'a, Message: 'a> From<InstrumentChart<'a>> for Element<'a, Message> {
 }
 
 #[derive(Debug)]
-pub struct InstrumentChart<'i>(&'i mut Instrument, &'i StationTime, TimeBase);
+pub struct InstrumentChart<'i, D, const WIDTH: i32>(
+    &'i mut Instrument<D, WIDTH>,
+    &'i StationTime,
+    TimeBase,
+);
 
-impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
+impl<'i, Message, D, const WIDTH: i32> Chart<Message> for InstrumentChart<'i, D, WIDTH> {
     #[inline]
     fn build_chart<DB: DrawingBackend>(&self, mut builder: ChartBuilder<DB>) {
         let InstrumentChart(instrument, time, time_base) = self;
