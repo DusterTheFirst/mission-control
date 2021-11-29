@@ -1,11 +1,16 @@
-use std::{collections::VecDeque, hash::Hash, io::ErrorKind, thread, time::Duration};
+use std::{
+    hash::Hash,
+    io::{BufRead, BufReader, ErrorKind},
+    thread,
+    time::Duration,
+};
 
 use flume::{Receiver, Sender};
 use iced::{futures::stream::BoxStream, Subscription};
 use iced_native::subscription::Recipe;
 use interlink::{phy, proto::PacketDown};
-use serialport::{SerialPort, SerialPortType};
-use tracing::{debug, error, trace, warn};
+use serialport::SerialPortType;
+use tracing::{debug, error, info, trace, warn};
 
 #[derive(Debug, Clone)]
 pub struct SerialSubscription {
@@ -64,6 +69,7 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
         if let Some(port) = port {
             trace!("Connecting to board");
             let mut port = match serialport::new(port, 0)
+                .flow_control(serialport::FlowControl::Hardware)
                 .timeout(Duration::from_millis(10))
                 .open()
             {
@@ -94,20 +100,46 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
             //         _ => panic!("{}", e),
             //     },
             // }
-
-            let mut data_storage = VecDeque::with_capacity(2048);
+            let mut data_storage = Vec::with_capacity(phy::BUFFER_SIZE);
+            let mut buffered_port = BufReader::with_capacity(9, port.as_mut());
 
             loop {
-                match read_data_from_serial_port(port.as_mut(), &sender, &mut data_storage) {
-                    Ok(()) => {}
+                let amount = match buffered_port.read_until(phy::COBS_SENTINEL, &mut data_storage) {
+                    Ok(amount) => amount,
                     Err(error) if error.kind() == ErrorKind::TimedOut => {
                         /* Suppress time outs */
+                        continue;
                     }
                     Err(error) => {
                         error!(%error, "Failed to communicate to serial port");
                         break;
                     }
+                };
+
+                dbg!(amount);
+                dbg!(buffered_port.buffer().len());
+
+                if amount > phy::BUFFER_SIZE {
+                    trace!(
+                        "Received {} bytes more than expected over serial",
+                        amount - phy::BUFFER_SIZE
+                    );
                 }
+
+                match postcard::from_bytes_cobs::<PacketDown>(&mut data_storage[..amount]) {
+                    Ok(packet) => {
+                        trace!(?packet, "Deserialized packet");
+
+                        // TODO: error handle
+                        sender.send(SerialEvent::PacketReceived).unwrap();
+                    }
+                    Err(error) => {
+                        error!(%error, "Failed to deserialize data");
+                        break;
+                    }
+                }
+
+                data_storage.clear();
             }
 
             // Set the DTR signal low if performing a graceful shutdown
@@ -127,43 +159,6 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
 
         thread::sleep(refresh_interval);
     }
-}
-
-fn read_data_from_serial_port(
-    port: &mut dyn SerialPort,
-    sender: &Sender<SerialEvent>,
-    data_storage: &mut VecDeque<u8>,
-) -> std::io::Result<()> {
-    let mut input = [0u8; 64];
-
-    let amount = port.read(&mut input)?;
-    data_storage.extend(&input[..amount]);
-
-    while !data_storage.is_empty() {
-        let contiguous = data_storage.make_contiguous();
-        let len = contiguous.len();
-        match postcard::take_from_bytes_cobs::<PacketDown>(contiguous) {
-            Ok((packet, leftovers)) => {
-                dbg!(packet);
-
-                let length = len - leftovers.len();
-
-                for _ in 0..length {
-                    data_storage.pop_front(); // TODO: what the fuck is this
-                }
-                // Get rid of trailing null
-                data_storage.pop_front();
-
-                sender.send(SerialEvent::PacketReceived).unwrap(); // TODO: error handle
-            }
-            Err(postcard::Error::DeserializeUnexpectedEnd) => break,
-            Err(error) => {
-                error!(%error, "Failed to deserialize data");
-            }
-        }
-    }
-
-    Ok(())
 }
 
 pub fn try_find_serial_port() -> Option<String> {

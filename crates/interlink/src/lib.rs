@@ -5,8 +5,6 @@
 #![warn(missing_docs)]
 #![no_std]
 
-pub use serde::{Deserialize, Serialize};
-
 /// Information about the physical link layer between the vehicle and ground station
 pub mod phy {
     /// Enum containing all physical interlink methods
@@ -16,6 +14,12 @@ pub mod phy {
         /// Physical commination takes place over [`serial`]
         Serial,
     }
+
+    /// The size of the Serial buffer to use
+    pub const BUFFER_SIZE: usize = 2048;
+
+    /// The sentinel byte to delimit packets
+    pub const COBS_SENTINEL: u8 = 0x00;
 
     /// Universal Serial Bus
     ///
