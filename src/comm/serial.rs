@@ -19,7 +19,7 @@ pub struct SerialSubscription {
 
 #[derive(Debug, Clone)]
 pub enum SerialEvent {
-    PacketReceived,
+    PacketReceived(PacketDown),
     Connected,
     Disconnected,
 }
@@ -100,11 +100,11 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
             //         _ => panic!("{}", e),
             //     },
             // }
-            let mut data_storage = Vec::with_capacity(phy::BUFFER_SIZE);
+            let mut data_storage = Vec::with_capacity(phy::serial::BUFFER_SIZE);
             let mut buffered_port = BufReader::with_capacity(9, port.as_mut());
 
             loop {
-                let amount = match buffered_port.read_until(phy::COBS_SENTINEL, &mut data_storage) {
+                let amount = match buffered_port.read_until(phy::serial::COBS_SENTINEL, &mut data_storage) {
                     Ok(amount) => amount,
                     Err(error) if error.kind() == ErrorKind::TimedOut => {
                         /* Suppress time outs */
@@ -116,22 +116,17 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
                     }
                 };
 
-                dbg!(amount);
-                dbg!(buffered_port.buffer().len());
-
-                if amount > phy::BUFFER_SIZE {
+                if amount > phy::serial::BUFFER_SIZE {
                     trace!(
                         "Received {} bytes more than expected over serial",
-                        amount - phy::BUFFER_SIZE
+                        amount - phy::serial::BUFFER_SIZE
                     );
                 }
 
                 match postcard::from_bytes_cobs::<PacketDown>(&mut data_storage[..amount]) {
                     Ok(packet) => {
-                        trace!(?packet, "Deserialized packet");
-
                         // TODO: error handle
-                        sender.send(SerialEvent::PacketReceived).unwrap();
+                        sender.send(SerialEvent::PacketReceived(packet)).unwrap();
                     }
                     Err(error) => {
                         error!(%error, "Failed to deserialize data");

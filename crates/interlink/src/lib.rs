@@ -15,12 +15,6 @@ pub mod phy {
         Serial,
     }
 
-    /// The size of the Serial buffer to use
-    pub const BUFFER_SIZE: usize = 2048;
-
-    /// The sentinel byte to delimit packets
-    pub const COBS_SENTINEL: u8 = 0x00;
-
     /// Universal Serial Bus
     ///
     /// Structures and constants that help the vehicle and ground station communicate
@@ -34,6 +28,12 @@ pub mod phy {
         ///
         /// http://voti.nl/pids/
         pub const PID: u16 = 0x03E8;
+
+        /// The size of the Serial buffer to use
+        pub const BUFFER_SIZE: usize = 2048;
+
+        /// The sentinel byte to delimit packets
+        pub const COBS_SENTINEL: u8 = 0x00;
     }
 
     // TODO: :D
@@ -58,16 +58,33 @@ pub mod proto {
 
     /// Packet sent from the vehicle to the station
     #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-    pub enum PacketDown<'s> {
-        /// Packet sent in response to [`PacketUp::Welcome`] to identify the vehicle
-        Hello {
-            /// Vehicle name
-            name: &'s str,
-            /// Vehicle firmware version
-            version: &'s str,
+    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+    pub enum PacketDown {
+        // TODO:
+        // /// Sent in response to [`PacketUp::Welcome`] to identify the vehicle
+        // Hello {
+        //     /// Vehicle name
+        //     name: &'s str,
+        //     /// Vehicle firmware version
+        //     version: &'s str,
+        // },
+        /// Raw magnetometer data in nT (nanotesla)
+        Magnetometer {
+            /// X component
+            x: i32,
+            /// Y component
+            y: i32,
+            /// Z component
+            z: i32,
         },
-        /// TODO: Replace me with something meaningful
-        TEST,
+        /// Raw accelerometer data in mg (milli-g) where 1g is 9.8m/s²
+        Accelerometer {
+            /// X component
+            x: i32,
+            /// Y component
+            y: i32,
+            /// Z component
+            z: i32,
+        },
     }
 }

@@ -1,7 +1,5 @@
 {
     "cSpell.words": [
-        "allocvec",
-        "atomicring",
         "defmt",
         "eframe",
         "egui",

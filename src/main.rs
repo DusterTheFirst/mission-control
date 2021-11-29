@@ -11,7 +11,7 @@ use iced::{
 };
 use iced_native::{event, subscription, Event};
 use insomnia::Lock;
-use interlink::phy::InterlinkMethod;
+use interlink::{phy::InterlinkMethod, proto::PacketDown};
 use station_time::{StationTime, TimeBase};
 use tracing_subscriber::EnvFilter;
 use util::inhibit_sleep;
@@ -44,7 +44,6 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug)]
 struct Charts {
-    c00: Instrument,
     c01: Instrument,
     c02: Instrument,
     c03: Instrument,
@@ -52,7 +51,6 @@ struct Charts {
     c10: Instrument,
     c20: Instrument,
     c30: Instrument,
-    c40: Instrument,
     c41: Instrument,
     c42: Instrument,
     c43: Instrument,
@@ -104,19 +102,17 @@ impl Application for InstrumentCluster {
                 window_size: (0, 0),
 
                 charts: Charts {
-                    c00: Instrument::new("00", 10.0, 100.0),
-                    c01: Instrument::new("01", 10.0, 100.0),
-                    c02: Instrument::new("02", 10.0, 100.0),
-                    c03: Instrument::new("03", 10.0, 100.0),
-                    c04: Instrument::new("04", 10.0, 100.0),
-                    c10: Instrument::new("10", 10.0, 100.0),
-                    c20: Instrument::new("20", 10.0, 100.0),
-                    c30: Instrument::new("30", 10.0, 100.0),
-                    c40: Instrument::new("40", 10.0, 100.0),
-                    c41: Instrument::new("41", 10.0, 100.0),
-                    c42: Instrument::new("42", 10.0, 100.0),
-                    c43: Instrument::new("43", 10.0, 100.0),
-                    c44: Instrument::new("44", 10.0, 100.0),
+                    c01: Instrument::new("01", 10.0),
+                    c02: Instrument::new("02", 10.0),
+                    c03: Instrument::new("03", 10.0),
+                    c04: Instrument::new("04", 10.0),
+                    c10: Instrument::new("10", 10.0),
+                    c20: Instrument::new("20", 10.0),
+                    c30: Instrument::new("30", 10.0),
+                    c41: Instrument::new("41", 10.0),
+                    c42: Instrument::new("42", 10.0),
+                    c43: Instrument::new("43", 10.0),
+                    c44: Instrument::new("44", 10.0),
                 },
 
                 time: StationTime::setup(),
@@ -161,9 +157,27 @@ impl Application for InstrumentCluster {
             Message::WindowFocusChange { focused } => self.window_focused = focused,
             Message::WindowSizeChange { width, height } => self.window_size = (width, height),
             Message::Refresh => { /* TODO: replace with something better? */ }
-            Message::SerialEvent(SerialEvent::PacketReceived) => {
+            Message::SerialEvent(SerialEvent::PacketReceived(packet)) => {
                 self.time.packet_received();
-                // trace!(?packet);
+
+                match packet {
+                    PacketDown::Magnetometer { x, y, z } => {
+                        self.charts.c01.add_datum(x as f64 / 1000.0, &self.time);
+                        self.charts.c02.add_datum(y as f64 / 1000.0, &self.time);
+                        self.charts.c03.add_datum(z as f64 / 1000.0, &self.time);
+                    }
+                    PacketDown::Accelerometer { x, y, z } => {
+                        self.charts
+                            .c41
+                            .add_datum((x as f64 * 9.81) / 1000.0, &self.time);
+                        self.charts
+                            .c42
+                            .add_datum((y as f64 * 9.81) / 1000.0, &self.time);
+                        self.charts
+                            .c43
+                            .add_datum((z as f64 * 9.81) / 1000.0, &self.time);
+                    }
+                }
             }
             Message::SerialEvent(SerialEvent::Connected) => {
                 self.interlink = Some(InterlinkMethod::Serial);
