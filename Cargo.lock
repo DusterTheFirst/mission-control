@@ -1435,6 +1435,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c1ad878e07405df82b695089e63d278244344f80e764074d0bdfe99b89460f3"
 dependencies = [
  "atomic-polyfill",
+ "defmt",
  "hash32",
  "serde",
  "spin",
@@ -1638,6 +1639,7 @@ name = "interlink"
 version = "0.1.0"
 dependencies = [
  "defmt",
+ "heapless",
  "serde",
 ]
 

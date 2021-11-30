@@ -1,4 +1,7 @@
-use std::sync::Once;
+use std::{
+    fmt::{self, Display, Formatter},
+    sync::Once,
+};
 
 use time::{Duration, OffsetDateTime, Time};
 use tracing::{error, warn};
@@ -12,11 +15,29 @@ pub struct StationTime {
     last_packet: Option<OffsetDateTime>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeBase {
     GroundControl,
     VehicleOn,
     Mission,
+}
+
+impl TimeBase {
+    pub const ALL: &'static [TimeBase] = &[
+        TimeBase::GroundControl,
+        TimeBase::VehicleOn,
+        TimeBase::Mission,
+    ];
+}
+
+impl Display for TimeBase {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            TimeBase::GroundControl => write!(f, "Ground Control Time"),
+            TimeBase::VehicleOn => write!(f, "Vehicle On Time"),
+            TimeBase::Mission => write!(f, "Mission Time"),
+        }
+    }
 }
 
 impl StationTime {

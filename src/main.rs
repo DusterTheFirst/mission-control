@@ -1,13 +1,14 @@
-use std::time::Duration;
+use std::{borrow::Cow, time::Duration};
 
 use comm::serial::{SerialEvent, SerialSubscription};
 use element::instrument::Instrument;
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
+    pick_list,
     window::{self, Mode},
     Align, Application, Button, Clipboard, Color, Column, Command, Container, Element,
-    HorizontalAlignment, Length, Row, Settings, Subscription, Text,
+    HorizontalAlignment, Length, PickList, Row, Settings, Subscription, Text,
 };
 use iced_native::{event, subscription, Event};
 use insomnia::Lock;
@@ -71,6 +72,7 @@ struct InstrumentCluster {
     serial: SerialSubscription,
     interlink: Option<InterlinkMethod>,
 
+    time_base_picker: pick_list::State<TimeBase>,
     quit_button: button::State,
     fullscreen_button: button::State,
 
@@ -86,6 +88,7 @@ pub enum Message {
     WindowFocusChange { focused: bool },
     WindowSizeChange { width: u32, height: u32 },
     SerialEvent(SerialEvent),
+    ChangeTimeBase(TimeBase),
 }
 
 impl Application for InstrumentCluster {
@@ -102,17 +105,17 @@ impl Application for InstrumentCluster {
                 window_size: (0, 0),
 
                 charts: Charts {
-                    c01: Instrument::new("01", 10.0),
-                    c02: Instrument::new("02", 10.0),
-                    c03: Instrument::new("03", 10.0),
-                    c04: Instrument::new("04", 10.0),
-                    c10: Instrument::new("10", 10.0),
-                    c20: Instrument::new("20", 10.0),
-                    c30: Instrument::new("30", 10.0),
-                    c41: Instrument::new("41", 10.0),
-                    c42: Instrument::new("42", 10.0),
-                    c43: Instrument::new("43", 10.0),
-                    c44: Instrument::new("44", 10.0),
+                    c01: Instrument::new("01", 5.0),
+                    c02: Instrument::new("02", 5.0),
+                    c03: Instrument::new("03", 5.0),
+                    c04: Instrument::new("04", 5.0),
+                    c10: Instrument::new("10", 5.0),
+                    c20: Instrument::new("20", 5.0),
+                    c30: Instrument::new("30", 5.0),
+                    c41: Instrument::new("41", 5.0),
+                    c42: Instrument::new("42", 5.0),
+                    c43: Instrument::new("43", 5.0),
+                    c44: Instrument::new("44", 5.0),
                 },
 
                 time: StationTime::setup(),
@@ -121,6 +124,7 @@ impl Application for InstrumentCluster {
                 serial: SerialSubscription::start(Duration::from_secs(1)),
                 interlink: None,
 
+                time_base_picker: pick_list::State::default(),
                 quit_button: button::State::default(),
                 fullscreen_button: button::State::default(),
 
@@ -177,6 +181,7 @@ impl Application for InstrumentCluster {
                             .c43
                             .add_datum((z as f64 * 9.81) / 1000.0, &self.time);
                     }
+                    PacketDown::Hello { name, version } => todo!(),
                 }
             }
             Message::SerialEvent(SerialEvent::Connected) => {
@@ -187,6 +192,7 @@ impl Application for InstrumentCluster {
                     self.interlink.take();
                 }
             }
+            Message::ChangeTimeBase(time_base) => self.time_base = time_base,
         }
 
         Command::none()
@@ -295,6 +301,12 @@ impl Application for InstrumentCluster {
                                                 .size(32)
                                                 .horizontal_alignment(HorizontalAlignment::Center),
                                         )
+                                        .push(PickList::new(
+                                            &mut self.time_base_picker,
+                                            Cow::Borrowed(TimeBase::ALL),
+                                            Some(self.time_base),
+                                            Message::ChangeTimeBase,
+                                        ))
                                         .push(
                                             Text::new(format!(
                                                 "Window Size: {:?}",

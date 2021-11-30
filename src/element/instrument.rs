@@ -110,7 +110,7 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
             .x_label_area_size(25)
             .y_label_area_size(40)
             // Finally attach a coordinate on the drawing area and make a chart context
-            .build_cartesian_2d(x_range, y_range)
+            .build_cartesian_2d(x_range.clone(), y_range)
             .unwrap();
 
         let axis_label_style = FontDesc::new(FontFamily::SansSerif, 12.0, FontStyle::Normal)
@@ -131,7 +131,7 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
             .y_label_style(axis_label_style.clone())
             .axis_desc_style(axis_label_style)
             // We can customize the maximum number of labels allowed for each axis
-            .x_labels(10)
+            .x_labels(5)
             .y_labels(5)
             .draw()
             .unwrap();
@@ -145,7 +145,7 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
                             .as_seconds_f64(),
                         y,
                     )
-                }),
+                }).filter(|&(x, _y)| x >= x_range.start),
                 &RED,
             ))
             .unwrap();

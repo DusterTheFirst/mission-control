@@ -48,26 +48,25 @@ pub mod proto {
 
     /// Packet sent from the station to the vehicle
     #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
     pub enum PacketUp {
         /// Packet sent to the vehicle upon connecting
         ///
         /// The vehicle should respond with a [`PacketDown::Hello`]
-        Welcome,
+        Welcome
     }
 
     /// Packet sent from the vehicle to the station
     #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-    #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+    #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
     pub enum PacketDown {
-        // TODO:
-        // /// Sent in response to [`PacketUp::Welcome`] to identify the vehicle
-        // Hello {
-        //     /// Vehicle name
-        //     name: &'s str,
-        //     /// Vehicle firmware version
-        //     version: &'s str,
-        // },
+        /// Sent in response to [`PacketUp::Welcome`] to identify the vehicle
+        Hello {
+            /// Vehicle name
+            name: heapless::String<32>,
+            /// Vehicle firmware version
+            version: heapless::String<32>,
+        },
         /// Raw magnetometer data in nT (nanotesla)
         Magnetometer {
             /// X component
