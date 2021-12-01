@@ -10,4 +10,4 @@ serde = { version = "1.0.130", features = ["derive"], default-features = false }
 
 [features]
 default = []
-defmt-impl = ["defmt", "heapless/defmt-impl"]
+vehicle = ["defmt", "heapless/defmt-impl"]

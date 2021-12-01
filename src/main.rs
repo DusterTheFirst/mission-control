@@ -12,7 +12,10 @@ use iced::{
 };
 use iced_native::{event, subscription, Event};
 use insomnia::Lock;
-use interlink::{phy::InterlinkMethod, proto::PacketDown};
+use interlink::{
+    phy::InterlinkMethod,
+    proto::{PacketDown, PacketDownData},
+};
 use station_time::{StationTime, TimeBase};
 use tracing_subscriber::EnvFilter;
 use util::inhibit_sleep;
@@ -161,16 +164,16 @@ impl Application for InstrumentCluster {
             Message::WindowFocusChange { focused } => self.window_focused = focused,
             Message::WindowSizeChange { width, height } => self.window_size = (width, height),
             Message::Refresh => { /* TODO: replace with something better? */ }
-            Message::SerialEvent(SerialEvent::PacketReceived(packet)) => {
-                self.time.packet_received();
+            Message::SerialEvent(SerialEvent::PacketReceived(PacketDown { time, data })) => {
+                self.time.packet_received(time);
 
-                match packet {
-                    PacketDown::Magnetometer { x, y, z } => {
+                match data {
+                    PacketDownData::Magnetometer { x, y, z } => {
                         self.charts.c01.add_datum(x as f64 / 1000.0, &self.time);
                         self.charts.c02.add_datum(y as f64 / 1000.0, &self.time);
                         self.charts.c03.add_datum(z as f64 / 1000.0, &self.time);
                     }
-                    PacketDown::Accelerometer { x, y, z } => {
+                    PacketDownData::Accelerometer { x, y, z } => {
                         self.charts
                             .c41
                             .add_datum((x as f64 * 9.81) / 1000.0, &self.time);
@@ -181,7 +184,7 @@ impl Application for InstrumentCluster {
                             .c43
                             .add_datum((z as f64 * 9.81) / 1000.0, &self.time);
                     }
-                    PacketDown::Hello { name, version } => todo!(),
+                    PacketDownData::Hello { name, version } => todo!(),
                 }
             }
             Message::SerialEvent(SerialEvent::Connected) => {

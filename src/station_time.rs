@@ -3,6 +3,7 @@ use std::{
     sync::Once,
 };
 
+use interlink::vehicle_time::VehicleTime;
 use time::{Duration, OffsetDateTime, Time};
 use tracing::{error, warn};
 
@@ -100,7 +101,8 @@ impl StationTime {
         self.now
     }
 
-    pub fn packet_received(&mut self) {
+    pub fn packet_received(&mut self, time: VehicleTime) {
+        // TODO: vehicle time
         self.last_packet = Some(Self::current_time());
     }
 
