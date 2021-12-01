@@ -14,7 +14,7 @@ use iced_native::{event, subscription, Event};
 use insomnia::Lock;
 use interlink::{
     phy::InterlinkMethod,
-    proto::{PacketDown, PacketDownData},
+    proto::{PacketDown, PacketDownData, VehicleIdentification},
 };
 use station_time::{StationTime, TimeBase};
 use tracing_subscriber::EnvFilter;
@@ -36,8 +36,6 @@ pub fn main() -> iced::Result {
         .pretty()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
-
-    // TODO: inhibit sleep
 
     InstrumentCluster::run(Settings {
         antialiasing: true,
@@ -74,6 +72,7 @@ struct InstrumentCluster {
 
     serial: SerialSubscription,
     interlink: Option<InterlinkMethod>,
+    vehicle: Option<VehicleIdentification>,
 
     time_base_picker: pick_list::State<TimeBase>,
     quit_button: button::State,
@@ -126,6 +125,7 @@ impl Application for InstrumentCluster {
 
                 serial: SerialSubscription::start(Duration::from_secs(1)),
                 interlink: None,
+                vehicle: None,
 
                 time_base_picker: pick_list::State::default(),
                 quit_button: button::State::default(),
@@ -184,7 +184,9 @@ impl Application for InstrumentCluster {
                             .c43
                             .add_datum((z as f64 * 9.81) / 1000.0, &self.time);
                     }
-                    PacketDownData::Hello { name, version } => todo!(),
+                    PacketDownData::Hello(vehicle_identification) => {
+                        self.vehicle.replace(vehicle_identification);
+                    }
                 }
             }
             Message::SerialEvent(SerialEvent::Connected) => {
@@ -194,6 +196,7 @@ impl Application for InstrumentCluster {
                 if self.interlink == Some(InterlinkMethod::Serial) {
                     self.interlink.take();
                 }
+                self.vehicle.take();
             }
             Message::ChangeTimeBase(time_base) => self.time_base = time_base,
         }
@@ -246,7 +249,7 @@ impl Application for InstrumentCluster {
                         .width(Length::Fill)
                         .height(Length::Fill)
                         .spacing(10)
-                        .push(telemetry_status(self.time, self.interlink))
+                        .push(telemetry_status(self.time, self.interlink, &self.vehicle))
                         .push(
                             self.charts
                                 .c10

@@ -8,7 +8,7 @@ use std::{
 use flume::{Receiver, Sender};
 use iced::{futures::stream::BoxStream, Subscription};
 use iced_native::subscription::Recipe;
-use interlink::{phy, proto::PacketDown};
+use interlink::{phy, proto::{PacketDown, PacketUp}};
 use serialport::SerialPortType;
 use tracing::{debug, error, trace, warn};
 
@@ -86,20 +86,22 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
 
             port.write_data_terminal_ready(true).unwrap();
 
-            // match port.write_all(
-            //     postcard::to_allocvec_cobs(&PacketUp::Welcome)
-            //         .unwrap()
-            //         .as_slice(),
-            // ) {
-            //     Ok(()) => {}
-            //     Err(e) => match e.kind() {
-            //         ErrorKind::TimedOut => {
-            //             warn!("Serial port not connected");
-            //             return;
-            //         }
-            //         _ => panic!("{}", e),
-            //     },
-            // }
+            // TODO: better
+            match port.write_all(
+                postcard::to_allocvec_cobs(&PacketUp::Welcome)
+                    .unwrap()
+                    .as_slice(),
+            ) {
+                Ok(()) => {}
+                Err(e) => match e.kind() {
+                    ErrorKind::TimedOut => {
+                        warn!("Serial port not connected");
+                        return;
+                    }
+                    _ => panic!("{}", e),
+                },
+            }
+            
             let mut data_storage = Vec::with_capacity(phy::serial::BUFFER_SIZE);
             let mut buffered_port = BufReader::with_capacity(9, port.as_mut());
 

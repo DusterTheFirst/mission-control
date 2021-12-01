@@ -29,12 +29,7 @@ pub struct PacketDown {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum PacketDownData {
     /// Sent in response to [`PacketUp::Welcome`] to identify the vehicle.
-    Hello {
-        /// Vehicle name.
-        name: heapless::String<32>,
-        /// Vehicle firmware version.
-        version: heapless::String<32>,
-    },
+    Hello(VehicleIdentification),
     /// Raw magnetometer data in nT (nanotesla).
     Magnetometer {
         /// X component.
@@ -53,4 +48,14 @@ pub enum PacketDownData {
         /// Z component.
         z: i32,
     },
+}
+
+/// Identification information about a vehicle
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct VehicleIdentification {
+    /// Vehicle name.
+    pub name: heapless::String<32>,
+    /// Vehicle firmware version.
+    pub version: heapless::String<32>,
 }

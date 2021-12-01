@@ -1,21 +1,28 @@
 use iced::{Align, Column, Element, Length, Space, Text};
-use interlink::phy::InterlinkMethod;
+use interlink::{phy::InterlinkMethod, proto::VehicleIdentification};
 
 use crate::{
     element::mono_label_text_tooltip,
     station_time::{format_duration, StationTime},
-    style::{self, colors::Color},
+    style::{
+        self,
+        colors::{self, Color},
+    },
     Message,
 };
+
+use super::mono_label_text;
 
 pub fn telemetry_status(
     station_time: StationTime,
     interlink: Option<InterlinkMethod>,
+    vehicle: &Option<VehicleIdentification>,
 ) -> Element<'static, Message> {
     Column::new()
         .push(Space::new(Length::Shrink, Length::Fill))
         .push(Text::new("Telemetry").size(32))
         .push(Space::new(Length::Shrink, Length::Units(16)))
+        .push(vehicle_id(vehicle))
         .push(interlink_method(interlink))
         .push(time_since_last_packet(station_time))
         .push(Space::new(Length::Shrink, Length::Fill))
@@ -91,4 +98,16 @@ fn interlink_method(interlink: Option<InterlinkMethod>) -> Element<'static, Mess
         "Physical Method of Communication",
         Some(color),
     )
+}
+
+fn vehicle_id(vehicle: &Option<VehicleIdentification>) -> Element<'static, Message> {
+    match vehicle {
+        Some(vehicle_id) => mono_label_text_tooltip(
+            vehicle_id.name.as_str(),
+            vehicle_id.version.as_str(),
+            "Vehicle Information",
+            Some(colors::ACCENT),
+        ),
+        None => Space::new(Length::Shrink, Length::Shrink).into(),
+    }
 }

@@ -15,20 +15,25 @@ pub(self) fn mono_label_text_tooltip<T: Into<String>>(
     tooltip: &str,
     color: Option<Color>,
 ) -> Element<'static, Message> {
+    Tooltip::new(mono_label_text(label, text, color), tooltip, Position::Top)
+        .style(style::Tooltip)
+        .into()
+}
+
+pub(self) fn mono_label_text<T: Into<String>>(
+    label: &str,
+    text: T,
+    color: Option<Color>,
+) -> Element<'static, Message> {
     let text = Text::new(text).font(style::fonts::MONOSPACE);
 
-    Tooltip::new(
-        Row::new()
-            .push(Text::new(label).font(style::fonts::MONOSPACE))
-            .push(Text::new(": ").font(style::fonts::MONOSPACE))
-            .push(if let Some(color) = color {
-                text.color(color)
-            } else {
-                text
-            }),
-        tooltip,
-        Position::Top,
-    )
-    .style(style::Tooltip)
-    .into()
+    Row::new()
+        .push(Text::new(label).font(style::fonts::MONOSPACE))
+        .push(Text::new(": ").font(style::fonts::MONOSPACE))
+        .push(if let Some(color) = color {
+            text.color(color)
+        } else {
+            text
+        })
+        .into()
 }
