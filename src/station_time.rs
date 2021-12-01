@@ -11,7 +11,7 @@ use tracing::{error, warn};
 pub struct StationTime {
     now: OffsetDateTime,
     ground_control_on: OffsetDateTime,
-    vehicle_on: Option<OffsetDateTime>,
+    vehicle_time: Option<VehicleTime>,
     mission_start: Option<OffsetDateTime>,
     last_packet: Option<OffsetDateTime>,
 }
@@ -19,14 +19,14 @@ pub struct StationTime {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeBase {
     GroundControl,
-    VehicleOn,
+    VehicleTime,
     Mission,
 }
 
 impl TimeBase {
     pub const ALL: &'static [TimeBase] = &[
         TimeBase::GroundControl,
-        TimeBase::VehicleOn,
+        TimeBase::VehicleTime,
         TimeBase::Mission,
     ];
 }
@@ -35,7 +35,7 @@ impl Display for TimeBase {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             TimeBase::GroundControl => write!(f, "Ground Control Time"),
-            TimeBase::VehicleOn => write!(f, "Vehicle On Time"),
+            TimeBase::VehicleTime => write!(f, "Vehicle On Time"),
             TimeBase::Mission => write!(f, "Mission Time"),
         }
     }
@@ -73,7 +73,7 @@ impl StationTime {
             now,
             // Artificially sync the local time with the ground control time
             ground_control_on: Self::quantize(now),
-            vehicle_on: None,
+            vehicle_time: None,
             mission_start: None,
             last_packet: None,
         }
@@ -82,9 +82,14 @@ impl StationTime {
     pub fn get_elapsed(&self, time_base: TimeBase) -> Duration {
         match time_base {
             TimeBase::GroundControl => self.now - self.ground_control_on,
-            TimeBase::VehicleOn => self
-                .vehicle_on
-                .map(|vehicle_on| self.now - vehicle_on)
+            TimeBase::VehicleTime => self
+                .vehicle_time
+                .map(|vehicle_time| {
+                    Duration::new(
+                        vehicle_time.as_secs() as i64,
+                        (vehicle_time.subsec_micros() * 1_000) as i32,
+                    )
+                })
                 .unwrap_or(Duration::ZERO),
             TimeBase::Mission => self
                 .mission_start
@@ -101,9 +106,9 @@ impl StationTime {
         self.now
     }
 
-    pub fn packet_received(&mut self, time: VehicleTime) {
-        // TODO: vehicle time
+    pub fn packet_received(&mut self, vehicle_time: VehicleTime) {
         self.last_packet = Some(Self::current_time());
+        self.vehicle_time = Some(vehicle_time);
     }
 
     pub fn time_since_last_packet(&self) -> Option<Duration> {

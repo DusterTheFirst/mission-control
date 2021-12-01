@@ -10,7 +10,7 @@ use iced::{futures::stream::BoxStream, Subscription};
 use iced_native::subscription::Recipe;
 use interlink::{phy, proto::PacketDown};
 use serialport::SerialPortType;
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Clone)]
 pub struct SerialSubscription {

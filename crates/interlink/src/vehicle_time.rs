@@ -5,7 +5,7 @@ use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
 
 /// Type representing a moment in time relative to the vehicle's epoch.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VehicleTime {
     seconds: u32,
     subsec_micros: u32,

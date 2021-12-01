@@ -1,8 +1,8 @@
-use std::{collections::VecDeque, fmt::Debug};
+use std::fmt::Debug;
 
-use heapless::{Deque, HistoryBuffer};
+use heapless::Deque;
 use iced::{Container, Element, Length};
-use plotters::{element::Drawable, prelude::*};
+use plotters::prelude::*;
 
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 use time::OffsetDateTime;
@@ -93,7 +93,7 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
                     (value.min(pre_min), value.max(pre_max))
                 });
 
-            min.min(0.0)..max.max(0.0)
+            min.min(0.0)..max.max(0.1)
         };
 
         // After this point, we should be able to draw construct a chart context
@@ -137,15 +137,21 @@ impl<'i, Message> Chart<Message> for InstrumentChart<'i> {
             .unwrap();
 
         // TODO: implement correctly
+        // TODO: make sure this actually scales with time base
+        // TODO: make sure this is tracking correctly cause uh oh
         chart
             .draw_series(LineSeries::new(
-                instrument.datum.iter().map(|&(x, y)| {
-                    (
-                        (time.get_elapsed(*time_base).saturating_sub(time.now() - x))
-                            .as_seconds_f64(),
-                        y,
-                    )
-                }).filter(|&(x, _y)| x >= x_range.start),
+                instrument
+                    .datum
+                    .iter()
+                    .map(|&(x, y)| {
+                        (
+                            (time.get_elapsed(*time_base).saturating_sub(time.now() - x))
+                                .as_seconds_f64(),
+                            y,
+                        )
+                    })
+                    .filter(|&(x, _y)| x >= x_range.start),
                 &RED,
             ))
             .unwrap();

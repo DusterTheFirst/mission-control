@@ -22,7 +22,7 @@ pub fn ground_station_status(station_time: StationTime) -> Element<'static, Mess
             station_time,
             TimeBase::GroundControl,
         ))
-        .push(station_time_with_tooltip(station_time, TimeBase::VehicleOn))
+        .push(station_time_with_tooltip(station_time, TimeBase::VehicleTime))
         .push(station_time_with_tooltip(station_time, TimeBase::Mission))
         .push(Space::new(Length::Shrink, Length::Fill))
         .width(Length::Fill)
@@ -63,7 +63,7 @@ fn station_time_with_tooltip(
             "Ground Control Time",
             Color::from_rgb(0xFF, 0x00, 0x00),
         ),
-        TimeBase::VehicleOn => ("VOT", "Vehicle On Time", Color::from_rgb(0x00, 0xFF, 0x00)),
+        TimeBase::VehicleTime => ("VOT", "Vehicle On Time", Color::from_rgb(0x00, 0xFF, 0x00)),
         TimeBase::Mission => ("MIT", "Mission Time", Color::from_rgb(0x00, 0x00, 0xFF)),
     };
 
