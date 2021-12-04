@@ -5,7 +5,7 @@ use core::fmt::{self, Display};
 use serde::{Deserialize, Serialize};
 
 /// Type representing a moment in time relative to the vehicle's epoch.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VehicleTime {
     seconds: u32,
     subsec_micros: u32,
@@ -20,7 +20,7 @@ impl VehicleTime {
 
     /// Create a `VehicleTime`.
     #[cfg(feature = "vehicle")]
-    pub fn new(seconds: u32, subsec_micros: u32) -> Self {
+    pub const fn new(seconds: u32, subsec_micros: u32) -> Self {
         Self {
             seconds,
             subsec_micros,
@@ -28,17 +28,17 @@ impl VehicleTime {
     }
 
     /// Returns the total number of whole seconds represented by this `VehicleTime`.
-    pub fn as_secs(&self) -> u32 {
+    pub const fn as_secs(&self) -> u32 {
         self.seconds
     }
 
     /// Returns the total number of whole milliseconds represented by this `VehicleTime`.
-    pub fn as_millis(&self) -> u64 {
+    pub const fn as_millis(&self) -> u64 {
         self.seconds as u64 * 1_000 + self.subsec_micros as u64 / 1_000
     }
 
-    ///  Returns the total number of whole microseconds represented by this `VehicleTime`.
-    pub fn as_micros(&self) -> u64 {
+    /// Returns the total number of whole microseconds represented by this `VehicleTime`.
+    pub const fn as_micros(&self) -> u64 {
         self.seconds as u64 * 1_000_000 + self.subsec_micros as u64
     }
 
@@ -47,7 +47,7 @@ impl VehicleTime {
     /// This method does **not** return the length of the duration when represented
     /// by milliseconds. The returned number always represents a fractional portion
     /// of a second (i.e., it is less than one thousand).
-    pub fn subsec_millis(&self) -> u32 {
+    pub const fn subsec_millis(&self) -> u32 {
         self.subsec_micros / 1_000
     }
 
@@ -56,7 +56,7 @@ impl VehicleTime {
     /// This method does **not** return the length of the duration when represented
     /// by milliseconds. The returned number always represents a fractional portion
     /// of a second (i.e., it is less than one million).
-    pub fn subsec_micros(&self) -> u32 {
+    pub const fn subsec_micros(&self) -> u32 {
         self.subsec_micros
     }
 

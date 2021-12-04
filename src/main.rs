@@ -1,3 +1,7 @@
+#![forbid(unsafe_code)]
+#![deny(clippy::unwrap_used, clippy::trivially_copy_pass_by_ref)]
+#![warn(clippy::unwrap_in_result, clippy::missing_const_for_fn)]
+
 use std::{borrow::Cow, time::Duration};
 
 use comm::serial::{SerialEvent, SerialSubscription};
@@ -16,7 +20,7 @@ use interlink::{
     phy::InterlinkMethod,
     proto::{PacketDown, PacketDownData, VehicleIdentification},
 };
-use station_time::{StationTime, TimeBase};
+use time_manager::{base::TimeBase, unit::VehicleTime, TimeManager};
 use tracing_subscriber::EnvFilter;
 use util::inhibit_sleep;
 
@@ -26,8 +30,8 @@ use crate::element::{
 
 mod comm;
 mod element;
-mod station_time;
 mod style;
+mod time_manager;
 mod util;
 
 pub fn main() -> iced::Result {
@@ -65,7 +69,7 @@ struct InstrumentCluster {
     window_mode: Mode,
     window_size: (u32, u32),
 
-    time: StationTime,
+    time: TimeManager,
     time_base: TimeBase,
 
     charts: Charts,
@@ -120,7 +124,7 @@ impl Application for InstrumentCluster {
                     c44: Instrument::new("44", 5.0),
                 },
 
-                time: StationTime::setup(),
+                time: TimeManager::setup(),
                 time_base: TimeBase::GroundControl,
 
                 serial: SerialSubscription::start(Duration::from_secs(1)),
@@ -165,24 +169,20 @@ impl Application for InstrumentCluster {
             Message::WindowSizeChange { width, height } => self.window_size = (width, height),
             Message::Refresh => { /* TODO: replace with something better? */ }
             Message::SerialEvent(SerialEvent::PacketReceived(PacketDown { time, data })) => {
+                let time = VehicleTime::from_packet(time);
+
                 self.time.packet_received(time);
 
                 match data {
                     PacketDownData::Magnetometer { x, y, z } => {
-                        self.charts.c01.add_datum(x as f64 / 1000.0, &self.time);
-                        self.charts.c02.add_datum(y as f64 / 1000.0, &self.time);
-                        self.charts.c03.add_datum(z as f64 / 1000.0, &self.time);
+                        self.charts.c01.add_datum(x as f64 / 1000.0, time);
+                        self.charts.c02.add_datum(y as f64 / 1000.0, time);
+                        self.charts.c03.add_datum(z as f64 / 1000.0, time);
                     }
                     PacketDownData::Accelerometer { x, y, z } => {
-                        self.charts
-                            .c41
-                            .add_datum((x as f64 * 9.81) / 1000.0, &self.time);
-                        self.charts
-                            .c42
-                            .add_datum((y as f64 * 9.81) / 1000.0, &self.time);
-                        self.charts
-                            .c43
-                            .add_datum((z as f64 * 9.81) / 1000.0, &self.time);
+                        self.charts.c41.add_datum((x as f64 * 9.81) / 1000.0, time);
+                        self.charts.c42.add_datum((y as f64 * 9.81) / 1000.0, time);
+                        self.charts.c43.add_datum((z as f64 * 9.81) / 1000.0, time);
                     }
                     PacketDownData::Hello(vehicle_identification) => {
                         self.vehicle.replace(vehicle_identification);

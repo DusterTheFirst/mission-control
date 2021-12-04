@@ -8,7 +8,10 @@ use std::{
 use flume::{Receiver, Sender};
 use iced::{futures::stream::BoxStream, Subscription};
 use iced_native::subscription::Recipe;
-use interlink::{phy, proto::{PacketDown, PacketUp}};
+use interlink::{
+    phy,
+    proto::{PacketDown, PacketUp},
+};
 use serialport::SerialPortType;
 use tracing::{debug, error, trace, warn};
 
@@ -82,14 +85,16 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
 
             debug!("Connected to board");
 
-            sender.send(SerialEvent::Connected).unwrap();
+            sender
+                .send(SerialEvent::Connected)
+                .expect("unable to send SerialEvent");
 
-            port.write_data_terminal_ready(true).unwrap();
+            port.write_data_terminal_ready(true).ok();
 
             // TODO: better
             match port.write_all(
                 postcard::to_allocvec_cobs(&PacketUp::Welcome)
-                    .unwrap()
+                    .expect("unable to serialize Welcome packet")
                     .as_slice(),
             ) {
                 Ok(()) => {}
@@ -101,22 +106,23 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
                     _ => panic!("{}", e),
                 },
             }
-            
+
             let mut data_storage = Vec::with_capacity(phy::serial::BUFFER_SIZE);
             let mut buffered_port = BufReader::with_capacity(9, port.as_mut());
 
             loop {
-                let amount = match buffered_port.read_until(phy::serial::COBS_SENTINEL, &mut data_storage) {
-                    Ok(amount) => amount,
-                    Err(error) if error.kind() == ErrorKind::TimedOut => {
-                        /* Suppress time outs */
-                        continue;
-                    }
-                    Err(error) => {
-                        error!(%error, "Failed to communicate to serial port");
-                        break;
-                    }
-                };
+                let amount =
+                    match buffered_port.read_until(phy::serial::COBS_SENTINEL, &mut data_storage) {
+                        Ok(amount) => amount,
+                        Err(error) if error.kind() == ErrorKind::TimedOut => {
+                            /* Suppress time outs */
+                            continue;
+                        }
+                        Err(error) => {
+                            error!(%error, "Failed to communicate to serial port");
+                            break;
+                        }
+                    };
 
                 if amount > phy::serial::BUFFER_SIZE {
                     trace!(
@@ -127,8 +133,9 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
 
                 match postcard::from_bytes_cobs::<PacketDown>(&mut data_storage[..amount]) {
                     Ok(packet) => {
-                        // TODO: error handle
-                        sender.send(SerialEvent::PacketReceived(packet)).unwrap();
+                        sender
+                            .send(SerialEvent::PacketReceived(packet))
+                            .expect("unable to send SerialEvent");
                     }
                     Err(error) => {
                         error!(%error, "Failed to deserialize data");
@@ -142,7 +149,9 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
             // Set the DTR signal low if performing a graceful shutdown
             port.write_data_terminal_ready(false).ok();
 
-            sender.send(SerialEvent::Disconnected).unwrap();
+            sender
+                .send(SerialEvent::Disconnected)
+                .expect("unable to send SerialEvent");
 
             trace!("Closing serial connection");
 
@@ -160,7 +169,7 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
 
 pub fn try_find_serial_port() -> Option<String> {
     serialport::available_ports()
-        .unwrap()
+        .expect("unable to enumerate ports")
         .into_iter()
         .find_map(|port| match port.port_type {
             SerialPortType::UsbPort(usb) => {

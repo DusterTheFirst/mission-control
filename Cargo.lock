@@ -1394,7 +1394,6 @@ dependencies = [
  "async-std",
  "dotenv",
  "flume",
- "heapless",
  "iced",
  "iced_native",
  "insomnia",

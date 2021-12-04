@@ -3,7 +3,7 @@ use interlink::{phy::InterlinkMethod, proto::VehicleIdentification};
 
 use crate::{
     element::mono_label_text_tooltip,
-    station_time::{format_duration, StationTime},
+    time_manager::{format_duration, TimeManager},
     style::{
         self,
         colors::{self, Color},
@@ -11,10 +11,8 @@ use crate::{
     Message,
 };
 
-use super::mono_label_text;
-
 pub fn telemetry_status(
-    station_time: StationTime,
+    time_manager: TimeManager,
     interlink: Option<InterlinkMethod>,
     vehicle: &Option<VehicleIdentification>,
 ) -> Element<'static, Message> {
@@ -24,7 +22,7 @@ pub fn telemetry_status(
         .push(Space::new(Length::Shrink, Length::Units(16)))
         .push(vehicle_id(vehicle))
         .push(interlink_method(interlink))
-        .push(time_since_last_packet(station_time))
+        .push(time_since_last_packet(time_manager))
         .push(Space::new(Length::Shrink, Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
@@ -47,9 +45,9 @@ fn interpolate_error_color(progress: f32) -> Color {
     )
 }
 
-fn time_since_last_packet(station_time: StationTime) -> Element<'static, Message> {
+fn time_since_last_packet(time_manager: TimeManager) -> Element<'static, Message> {
     let (time_since_last_packet, color) =
-        if let Some(time_since_last_packet) = station_time.time_since_last_packet() {
+        if let Some(time_since_last_packet) = time_manager.duration_since_last_packet() {
             let color = match time_since_last_packet.whole_milliseconds() {
                 0..=500 => style::colors::GOOD,
                 i @ 501..=5000 => interpolate_error_color((i - 500) as f32 / 5000.0),
