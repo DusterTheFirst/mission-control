@@ -5,7 +5,7 @@
 use std::{borrow::Cow, time::Duration};
 
 use comm::serial::{SerialEvent, SerialSubscription};
-use element::instrument::Instrument;
+use element::instrument::{EmptyReading, Instrument};
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
@@ -18,7 +18,10 @@ use iced_native::{event, subscription, Event};
 use insomnia::Lock;
 use interlink::{
     phy::InterlinkMethod,
-    proto::{PacketDown, PacketDownData, VehicleIdentification},
+    proto::{
+        AccelerometerReading, MagnetometerReading, PacketDown, PacketDownData,
+        VehicleIdentification,
+    },
 };
 use time_manager::{base::TimeBase, unit::VehicleTime, TimeManager};
 use tracing_subscriber::EnvFilter;
@@ -50,17 +53,17 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug)]
 struct Charts {
-    c01: Instrument,
-    c02: Instrument,
-    c03: Instrument,
-    c04: Instrument,
-    c10: Instrument,
-    c20: Instrument,
-    c30: Instrument,
-    c41: Instrument,
-    c42: Instrument,
-    c43: Instrument,
-    c44: Instrument,
+    c01: Instrument<EmptyReading>,
+    c02: Instrument<EmptyReading>,
+    c03: Instrument<EmptyReading>,
+    c04: Instrument<EmptyReading>,
+    magnetic_field: Instrument<MagnetometerReading>,
+    c20: Instrument<EmptyReading>,
+    acceleration: Instrument<AccelerometerReading>,
+    c41: Instrument<EmptyReading>,
+    c42: Instrument<EmptyReading>,
+    c43: Instrument<EmptyReading>,
+    c44: Instrument<EmptyReading>,
 }
 
 struct InstrumentCluster {
@@ -111,17 +114,17 @@ impl Application for InstrumentCluster {
                 window_size: (0, 0),
 
                 charts: Charts {
-                    c01: Instrument::new("01", 5.0),
-                    c02: Instrument::new("02", 5.0),
-                    c03: Instrument::new("03", 5.0),
-                    c04: Instrument::new("04", 5.0),
-                    c10: Instrument::new("10", 5.0),
-                    c20: Instrument::new("20", 5.0),
-                    c30: Instrument::new("30", 5.0),
-                    c41: Instrument::new("41", 5.0),
-                    c42: Instrument::new("42", 5.0),
-                    c43: Instrument::new("43", 5.0),
-                    c44: Instrument::new("44", 5.0),
+                    c01: Instrument::new(5.0),
+                    c02: Instrument::new(5.0),
+                    c03: Instrument::new(5.0),
+                    c04: Instrument::new(5.0),
+                    acceleration: Instrument::new(5.0),
+                    c20: Instrument::new(5.0),
+                    magnetic_field: Instrument::new(5.0),
+                    c41: Instrument::new(5.0),
+                    c42: Instrument::new(5.0),
+                    c43: Instrument::new(5.0),
+                    c44: Instrument::new(5.0),
                 },
 
                 time: TimeManager::setup(),
@@ -174,15 +177,11 @@ impl Application for InstrumentCluster {
                 self.time.packet_received(time);
 
                 match data {
-                    PacketDownData::Magnetometer { x, y, z } => {
-                        self.charts.c01.add_datum(x as f64 / 1000.0, time);
-                        self.charts.c02.add_datum(y as f64 / 1000.0, time);
-                        self.charts.c03.add_datum(z as f64 / 1000.0, time);
+                    PacketDownData::Magnetometer(reading) => {
+                        self.charts.magnetic_field.add_reading(time, reading);
                     }
-                    PacketDownData::Accelerometer { x, y, z } => {
-                        self.charts.c41.add_datum((x as f64 * 9.81) / 1000.0, time);
-                        self.charts.c42.add_datum((y as f64 * 9.81) / 1000.0, time);
-                        self.charts.c43.add_datum((z as f64 * 9.81) / 1000.0, time);
+                    PacketDownData::Accelerometer(reading) => {
+                        self.charts.acceleration.add_reading(time, reading);
                     }
                     PacketDownData::Hello(vehicle_identification) => {
                         self.vehicle.replace(vehicle_identification);
@@ -252,7 +251,7 @@ impl Application for InstrumentCluster {
                         .push(telemetry_status(self.time, self.interlink, &self.vehicle))
                         .push(
                             self.charts
-                                .c10
+                                .magnetic_field
                                 .view::<Self::Message>(&self.time, self.time_base),
                         )
                         .push(
@@ -262,7 +261,7 @@ impl Application for InstrumentCluster {
                         )
                         .push(
                             self.charts
-                                .c30
+                                .acceleration
                                 .view::<Self::Message>(&self.time, self.time_base),
                         )
                         .push(ground_station_status(self.time)),

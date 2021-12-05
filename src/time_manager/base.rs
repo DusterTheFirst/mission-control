@@ -1,9 +1,12 @@
-use std::fmt::{self, Display, Formatter};
+use derive_more::Display;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum TimeBase {
+    #[display(fmt = "Ground Control Time")]
     GroundControl,
+    #[display(fmt = "Vehicle On Time")]
     VehicleTime,
+    #[display(fmt = "Mission Time")]
     Mission,
 }
 
@@ -13,14 +16,4 @@ impl TimeBase {
         TimeBase::VehicleTime,
         TimeBase::Mission,
     ];
-}
-
-impl Display for TimeBase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            TimeBase::GroundControl => write!(f, "Ground Control Time"),
-            TimeBase::VehicleTime => write!(f, "Vehicle On Time"),
-            TimeBase::Mission => write!(f, "Mission Time"),
-        }
-    }
 }
