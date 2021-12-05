@@ -1,6 +1,5 @@
 //! Structures and types used to represent the communications protocol between the station and a vehicle.
 
-use derive_more::Deref;
 use serde::{Deserialize, Serialize};
 
 use crate::vehicle_time::VehicleTime;
@@ -31,10 +30,10 @@ pub struct PacketDown {
 pub enum PacketDownData {
     /// Sent in response to [`PacketUp::Welcome`] to identify the vehicle.
     Hello(VehicleIdentification),
-    /// Reading from the magnetometer
-    Magnetometer(MagnetometerReading),
-    /// Reading from the accelerometer
-    Accelerometer(AccelerometerReading),
+    /// Raw magnetometer data in nT (nanotesla).
+    Magnetometer(Vector3<i32>),
+    /// Raw accelerometer data in mg (milli-g) where 1g is 9.8m/s².
+    Accelerometer(Vector3<i32>),
 }
 
 /// Identification information about a vehicle
@@ -46,16 +45,6 @@ pub struct VehicleIdentification {
     /// Vehicle firmware version.
     pub version: heapless::String<32>,
 }
-
-/// Raw magnetometer data in nT (nanotesla).
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Deref)]
-pub struct MagnetometerReading(Vector3<i32>);
-
-/// Raw accelerometer data in mg (milli-g) where 1g is 9.8m/s².
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Deref)]
-pub struct AccelerometerReading(Vector3<i32>);
 
 /// Generic 3 component vector
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

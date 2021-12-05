@@ -1,7 +1,6 @@
-use std::{collections::VecDeque, fmt::Debug, iter, ops::Range};
+use std::{collections::VecDeque, fmt::Debug, ops::Range};
 
 use iced::{Container, Element, Length};
-use interlink::proto::{AccelerometerReading, MagnetometerReading};
 use plotters::prelude::*;
 
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
@@ -11,126 +10,22 @@ use crate::{
     time_manager::{base::TimeBase, unit::VehicleTime, TimeManager},
 };
 
-pub type DatumValuesIter<S> =
-    iter::Map<iter::Zip<Range<usize>, iter::Repeat<S>>, fn((usize, S)) -> f64>;
+use self::reading::Reading;
 
-pub trait Reading: Debug + Copy + Sized {
-    const VALUES: usize;
-
-    fn value(&self, index: usize) -> f64;
-    fn style(index: usize) -> ShapeStyle;
-    fn title() -> &'static str;
-
-    fn values(&self) -> DatumValuesIter<Self> {
-        (0..Self::VALUES)
-            .zip(iter::repeat(*self))
-            .map(|(index, datum)| datum.value(index))
-    }
-}
-
-impl Reading for AccelerometerReading {
-    const VALUES: usize = 3;
-
-    fn title() -> &'static str {
-        "Acceleration"
-    }
-
-    fn value(&self, index: usize) -> f64 {
-        match index {
-            0 => (self.x as f64 * 9.81) / 1000.0,
-            1 => (self.y as f64 * 9.81) / 1000.0,
-            2 => (self.z as f64 * 9.81) / 1000.0,
-            _ => panic!(
-                "attempted to access value out of bounds: {} > {}",
-                index,
-                Self::VALUES - 1
-            ),
-        }
-    }
-
-    // TODO: better
-    // TODO: macro?
-    fn style(index: usize) -> ShapeStyle {
-        match index {
-            0 => RED,
-            1 => GREEN,
-            2 => BLUE,
-            _ => panic!(
-                "attempted to access style out of bounds: {} > {}",
-                index,
-                Self::VALUES - 1
-            ),
-        }
-        .into()
-    }
-}
-
-impl Reading for MagnetometerReading {
-    const VALUES: usize = 3;
-
-    fn title() -> &'static str {
-        "Magnetic Field"
-    }
-
-    fn value(&self, index: usize) -> f64 {
-        match index {
-            0 => self.x as f64 / 1000.0,
-            1 => self.y as f64 / 1000.0,
-            2 => self.z as f64 / 1000.0,
-            _ => panic!(
-                "attempted to access value out of bounds: {} > {}",
-                index,
-                Self::VALUES - 1
-            ),
-        }
-    }
-
-    // TODO: better
-    // TODO: macro?
-    fn style(index: usize) -> ShapeStyle {
-        match index {
-            0 => RED,
-            1 => GREEN,
-            2 => BLUE,
-            _ => panic!(
-                "attempted to access style out of bounds: {} > {}",
-                index,
-                Self::VALUES - 1
-            ),
-        }
-        .into()
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct EmptyReading {}
-
-impl Reading for EmptyReading {
-    const VALUES: usize = 0;
-
-    fn title() -> &'static str {
-        "-----"
-    }
-
-    fn value(&self, _: usize) -> f64 {
-        panic!("attempted to access value from EmptyDatum")
-    }
-
-    fn style(_: usize) -> ShapeStyle {
-        panic!("attempted to access style from EmptyDatum")
-    }
-}
+pub mod reading;
 
 #[derive(Debug)]
 pub struct Instrument<R: Reading> {
     readings: VecDeque<(VehicleTime, R)>,
+    title: String,
     width: f64,
 }
 
 impl<D: Reading> Instrument<D> {
-    pub fn new(width: f64) -> Self {
+    pub fn new<S: Into<String>>(width: f64, title: S) -> Self {
         Self {
             readings: VecDeque::with_capacity(128),
+            title: title.into(),
             width,
         }
     }
@@ -233,7 +128,7 @@ impl<'i, Message, R: Reading> Chart<Message> for InstrumentChart<'i, R> {
             .margin_right(20)
             // Set the caption of the chart
             .caption(
-                R::title(),
+                &self.instrument.title,
                 FontDesc::new(FontFamily::SansSerif, 20.0, FontStyle::Normal)
                     .color(&style::colors::TEXT),
             )

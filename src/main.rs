@@ -5,7 +5,10 @@
 use std::{borrow::Cow, time::Duration};
 
 use comm::serial::{SerialEvent, SerialSubscription};
-use element::instrument::{EmptyReading, Instrument};
+use element::instrument::{
+    reading::{AccelerometerReading, EmptyReading, MagnetometerReading},
+    Instrument,
+};
 use iced::{
     button, executor,
     keyboard::{self, KeyCode, Modifiers},
@@ -18,10 +21,7 @@ use iced_native::{event, subscription, Event};
 use insomnia::Lock;
 use interlink::{
     phy::InterlinkMethod,
-    proto::{
-        AccelerometerReading, MagnetometerReading, PacketDown, PacketDownData,
-        VehicleIdentification,
-    },
+    proto::{PacketDown, PacketDownData, VehicleIdentification},
 };
 use time_manager::{base::TimeBase, unit::VehicleTime, TimeManager};
 use tracing_subscriber::EnvFilter;
@@ -114,17 +114,17 @@ impl Application for InstrumentCluster {
                 window_size: (0, 0),
 
                 charts: Charts {
-                    c01: Instrument::new(5.0),
-                    c02: Instrument::new(5.0),
-                    c03: Instrument::new(5.0),
-                    c04: Instrument::new(5.0),
-                    acceleration: Instrument::new(5.0),
-                    c20: Instrument::new(5.0),
-                    magnetic_field: Instrument::new(5.0),
-                    c41: Instrument::new(5.0),
-                    c42: Instrument::new(5.0),
-                    c43: Instrument::new(5.0),
-                    c44: Instrument::new(5.0),
+                    c01: Instrument::new(5.0, "01"),
+                    c02: Instrument::new(5.0, "02"),
+                    c03: Instrument::new(5.0, "03"),
+                    c04: Instrument::new(5.0, "04"),
+                    acceleration: Instrument::new(5.0, "Acceleration"),
+                    c20: Instrument::new(5.0, "20"),
+                    magnetic_field: Instrument::new(5.0, "Magnetic Field"),
+                    c41: Instrument::new(5.0, "41"),
+                    c42: Instrument::new(5.0, "42"),
+                    c43: Instrument::new(5.0, "43"),
+                    c44: Instrument::new(5.0, "44"),
                 },
 
                 time: TimeManager::setup(),
@@ -178,10 +178,14 @@ impl Application for InstrumentCluster {
 
                 match data {
                     PacketDownData::Magnetometer(reading) => {
-                        self.charts.magnetic_field.add_reading(time, reading);
+                        self.charts
+                            .magnetic_field
+                            .add_reading(time, MagnetometerReading::from_raw(reading));
                     }
                     PacketDownData::Accelerometer(reading) => {
-                        self.charts.acceleration.add_reading(time, reading);
+                        self.charts
+                            .acceleration
+                            .add_reading(time, AccelerometerReading::from_raw(reading));
                     }
                     PacketDownData::Hello(vehicle_identification) => {
                         self.vehicle.replace(vehicle_identification);
