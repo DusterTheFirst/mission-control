@@ -1,28 +1,46 @@
-use std::{convert::Infallible, fmt::Debug};
+use std::{convert::Infallible, fmt::Debug, any::{TypeId, type_name}};
 
 use interlink::proto::Vector3;
 
 use super::reading::{EmptyReading, Reading};
 
-pub trait InstrumentType: 'static + Debug {
+pub trait View: 'static + Debug {
     type Reading: Reading;
     type Raw;
 
     const TITLE: &'static str;
 
-    fn reading_from_raw(raw: Self::Raw) -> Self::Reading;
+    fn ingest_reading(raw: Self::Raw) -> Self::Reading;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum DataView {
+    Accelerometer,
+    Magnetometer,
+    Placeholder
+}
+
+impl DataView {
+    pub fn from_view<C: View>() -> Self {
+        match TypeId::of::<C>() {
+            id if id == TypeId::of::<Accelerometer>() => Self::Accelerometer,
+            id if id == TypeId::of::<Magnetometer>() => Self::Magnetometer,
+            id if id == TypeId::of::<Placeholder>() => Self::Placeholder,
+            _ => panic!("{} is not a known DataView", type_name::<C>())
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Placeholder;
 
-impl InstrumentType for Placeholder {
+impl View for Placeholder {
     type Reading = EmptyReading;
     type Raw = Infallible;
 
     const TITLE: &'static str = "Placeholder";
 
-    fn reading_from_raw(_raw: Self::Raw) -> Self::Reading {
+    fn ingest_reading(_raw: Self::Raw) -> Self::Reading {
         panic!("Attempted to create a reading in a placeholder instrument")
     }
 }
@@ -30,13 +48,13 @@ impl InstrumentType for Placeholder {
 #[derive(Debug, Clone, Copy)]
 pub struct Accelerometer;
 
-impl InstrumentType for Accelerometer {
+impl View for Accelerometer {
     type Reading = Vector3<f64>;
     type Raw = Vector3<i32>;
 
     const TITLE: &'static str = "Acceleration";
 
-    fn reading_from_raw(raw: Self::Raw) -> Self::Reading {
+    fn ingest_reading(raw: Self::Raw) -> Self::Reading {
         Vector3 {
             x: (raw.x as f64 * 9.81) / 1000.0,
             y: (raw.y as f64 * 9.81) / 1000.0,
@@ -48,13 +66,13 @@ impl InstrumentType for Accelerometer {
 #[derive(Debug, Clone, Copy)]
 pub struct Magnetometer;
 
-impl InstrumentType for Magnetometer {
+impl View for Magnetometer {
     type Reading = Vector3<f64>;
     type Raw = Vector3<i32>;
 
     const TITLE: &'static str = "Magnetic Field";
 
-    fn reading_from_raw(raw: Self::Raw) -> Self::Reading {
+    fn ingest_reading(raw: Self::Raw) -> Self::Reading {
         Vector3 {
             x: raw.x as f64 / 1000.0,
             y: raw.y as f64 / 1000.0,

@@ -6,7 +6,7 @@ use std::{borrow::Cow, time::Duration};
 
 use comm::serial::{SerialEvent, SerialSubscription};
 use element::instrument::{
-    instrument_type::{Accelerometer, Magnetometer, Placeholder},
+    data_view::{Accelerometer, Magnetometer, Placeholder},
     Instrument, InstrumentMessage,
 };
 use iced::{

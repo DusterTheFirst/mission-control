@@ -1,4 +1,4 @@
-use std::{any::TypeId, collections::VecDeque, fmt::Debug, ops::Range};
+use std::{collections::VecDeque, fmt::Debug, ops::Range};
 
 use iced::{button, Button, Element, Length};
 use plotters::prelude::*;
@@ -11,16 +11,16 @@ use crate::{
 };
 
 use self::{
-    instrument_type::{InstrumentType, Placeholder},
+    data_view::{DataView, View},
     reading::Reading,
 };
 
-pub mod instrument_type;
+pub mod data_view;
 pub mod reading;
 
 #[derive(Debug)]
-pub struct Instrument<IT: InstrumentType> {
-    readings: VecDeque<(VehicleTime, IT::Reading)>,
+pub struct Instrument<V: View> {
+    readings: VecDeque<(VehicleTime, V::Reading)>,
     width: f64,
 
     button_state: button::State,
@@ -28,10 +28,10 @@ pub struct Instrument<IT: InstrumentType> {
 
 #[derive(Debug, Clone, Copy)]
 pub enum InstrumentMessage {
-    Selected(TypeId),
+    Selected(DataView),
 }
 
-impl<IT: InstrumentType> Instrument<IT> {
+impl<V: View> Instrument<V> {
     pub fn new(width: f64) -> Self {
         Self {
             readings: VecDeque::new(),
@@ -46,11 +46,9 @@ impl<IT: InstrumentType> Instrument<IT> {
         time_manager: &'s TimeManager,
         time_base: TimeBase,
     ) -> Element<'s, InstrumentMessage> {
-        let enabled = TypeId::of::<IT>() != TypeId::of::<Placeholder>();
-
-        let button = Button::new(
+        Button::new(
             &mut self.button_state,
-            ChartWidget::new(InstrumentView::<IT> {
+            ChartWidget::new(InstrumentView::<V> {
                 time_manager,
                 time_base,
                 readings: &self.readings,
@@ -59,18 +57,13 @@ impl<IT: InstrumentType> Instrument<IT> {
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(style::Instrument);
-
-        if enabled {
-            button.on_press(InstrumentMessage::Selected(TypeId::of::<IT>()))
-        } else {
-            button
-        }
+        .style(style::Instrument)
+        .on_press(InstrumentMessage::Selected(DataView::from_view::<V>()))
         .into()
     }
 
-    pub fn add_reading(&mut self, vehicle_time: VehicleTime, raw: IT::Raw) {
-        let reading = IT::reading_from_raw(raw);
+    pub fn add_reading(&mut self, vehicle_time: VehicleTime, raw: V::Raw) {
+        let reading = V::ingest_reading(raw);
 
         self.readings.retain({
             let max_duration = vehicle_time.as_duration();
@@ -84,15 +77,15 @@ impl<IT: InstrumentType> Instrument<IT> {
 }
 
 #[derive(Debug)]
-pub struct InstrumentView<'i, IT: InstrumentType> {
-    readings: &'i VecDeque<(VehicleTime, IT::Reading)>,
+pub struct InstrumentView<'i, V: View> {
+    readings: &'i VecDeque<(VehicleTime, V::Reading)>,
     width: f64,
 
     time_manager: &'i TimeManager,
     time_base: TimeBase,
 }
 
-impl<'i, IT: InstrumentType> InstrumentView<'i, IT> {
+impl<'i, V: View> InstrumentView<'i, V> {
     pub fn x_range(&self) -> Range<f64> {
         let current_time = self.time_manager.elapsed(self.time_base);
 
@@ -119,7 +112,7 @@ impl<'i, IT: InstrumentType> InstrumentView<'i, IT> {
 }
 
 // Custom impl for Empty Datum
-impl<'i, Message, IT: InstrumentType> Chart<Message> for InstrumentView<'i, IT> {
+impl<'i, Message, V: View> Chart<Message> for InstrumentView<'i, V> {
     #[inline]
     fn build_chart<DB: DrawingBackend>(&self, mut builder: ChartBuilder<DB>) {
         let x_range = self.x_range();
@@ -135,7 +128,7 @@ impl<'i, Message, IT: InstrumentType> Chart<Message> for InstrumentView<'i, IT> 
             .margin_right(20)
             // Set the caption of the chart
             .caption(
-                IT::TITLE,
+                V::TITLE,
                 FontDesc::new(FontFamily::SansSerif, 20.0, FontStyle::Normal)
                     .color(&style::colors::TEXT),
             )
@@ -169,12 +162,13 @@ impl<'i, Message, IT: InstrumentType> Chart<Message> for InstrumentView<'i, IT> 
             .draw()
             .expect("failed to draw chart");
 
-        // TODO: implement correctly
-        // TODO: make sure this actually scales with time base
-        // TODO: make sure this is tracking correctly cause uh oh
+        // TODO: VECTORS?
 
+        // TODO: implement correctly
+        // TODO: make sure this actually scales wCh time base
+        // TODO: make sure this is tracking correctly cause uh oh
         // TODO: Separate when zoom in?
-        for i in 0..IT::Reading::VALUES {
+        for i in 0..V::Reading::VALUES {
             let series = self.readings.iter().filter_map(|&(vehicle_time, datum)| {
                 let time = self
                     .time_manager
@@ -189,7 +183,7 @@ impl<'i, Message, IT: InstrumentType> Chart<Message> for InstrumentView<'i, IT> 
             });
 
             chart
-                .draw_series(LineSeries::new(series, IT::Reading::style(i)))
+                .draw_series(LineSeries::new(series, V::Reading::style(i)))
                 .expect("failed to draw series");
         }
     }
