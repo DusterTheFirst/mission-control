@@ -1,6 +1,6 @@
-use std::{collections::VecDeque, fmt::Debug, ops::Range};
+use std::{any::TypeId, collections::VecDeque, fmt::Debug, ops::Range};
 
-use iced::{Container, Element, Length};
+use iced::{button, Button, Element, Length};
 use plotters::prelude::*;
 
 use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
@@ -10,95 +10,102 @@ use crate::{
     time_manager::{base::TimeBase, unit::VehicleTime, TimeManager},
 };
 
-use self::reading::Reading;
+use self::{
+    instrument_type::{InstrumentType, Placeholder},
+    reading::Reading,
+};
 
+pub mod instrument_type;
 pub mod reading;
 
 #[derive(Debug)]
-pub struct Instrument<R: Reading> {
-    readings: VecDeque<(VehicleTime, R)>,
-    title: String,
+pub struct Instrument<IT: InstrumentType> {
+    readings: VecDeque<(VehicleTime, IT::Reading)>,
     width: f64,
+
+    button_state: button::State,
 }
 
-impl<D: Reading> Instrument<D> {
-    pub fn new<S: Into<String>>(width: f64, title: S) -> Self {
+#[derive(Debug, Clone, Copy)]
+pub enum InstrumentMessage {
+    Selected(TypeId),
+}
+
+impl<IT: InstrumentType> Instrument<IT> {
+    pub fn new(width: f64) -> Self {
         Self {
-            readings: VecDeque::with_capacity(128),
-            title: title.into(),
+            readings: VecDeque::new(),
             width,
+
+            button_state: button::State::new(),
         }
     }
 
-    pub fn view<'s, Message: 's>(
+    pub fn view<'s>(
         &'s mut self,
         time_manager: &'s TimeManager,
         time_base: TimeBase,
-    ) -> InstrumentChart<D> {
-        InstrumentChart {
-            instrument: self,
-            time_manager,
-            time_base,
-        }
-    }
+    ) -> Element<'s, InstrumentMessage> {
+        let enabled = TypeId::of::<IT>() != TypeId::of::<Placeholder>();
 
-    pub fn add_reading(&mut self, vehicle_time: VehicleTime, reading: D) {
-        self.readings.push_back((vehicle_time, reading));
-    }
-
-    // pub fn prune_datum(
-    //     &mut self,
-    //     x_range: &Range<f64>,
-    //     time_manager: &TimeManager,
-    //     time_base: TimeBase,
-    // ) {
-    //     // TODO: ?
-    //     self.datum.retain(|&(time, _value)| {
-    //         let time = time_manager
-    //             .rebase_vehicle_time(time, time_base)
-    //             .as_seconds_f64();
-
-    //         x_range.contains(&time)
-    //     })
-    // }
-}
-
-impl<'a, Message: 'a, R: Reading> From<InstrumentChart<'a, R>> for Element<'a, Message> {
-    fn from(element: InstrumentChart<'a, R>) -> Self {
-        Container::new(
-            ChartWidget::new(element)
-                .width(Length::Fill)
-                .height(Length::Fill),
+        let button = Button::new(
+            &mut self.button_state,
+            ChartWidget::new(InstrumentView::<IT> {
+                time_manager,
+                time_base,
+                readings: &self.readings,
+                width: self.width,
+            }),
         )
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(style::Instrument)
+        .style(style::Instrument);
+
+        if enabled {
+            button.on_press(InstrumentMessage::Selected(TypeId::of::<IT>()))
+        } else {
+            button
+        }
         .into()
+    }
+
+    pub fn add_reading(&mut self, vehicle_time: VehicleTime, raw: IT::Raw) {
+        let reading = IT::reading_from_raw(raw);
+
+        self.readings.retain({
+            let max_duration = vehicle_time.as_duration();
+            let width = self.width;
+
+            move |&(time, _)| (max_duration - time.as_duration()).as_seconds_f64() < width
+        });
+
+        self.readings.push_back((vehicle_time, reading));
     }
 }
 
 #[derive(Debug)]
-pub struct InstrumentChart<'i, D: Reading> {
-    instrument: &'i mut Instrument<D>,
+pub struct InstrumentView<'i, IT: InstrumentType> {
+    readings: &'i VecDeque<(VehicleTime, IT::Reading)>,
+    width: f64,
+
     time_manager: &'i TimeManager,
     time_base: TimeBase,
 }
 
-impl<'i, R: Reading> InstrumentChart<'i, R> {
+impl<'i, IT: InstrumentType> InstrumentView<'i, IT> {
     pub fn x_range(&self) -> Range<f64> {
         let current_time = self.time_manager.elapsed(self.time_base);
 
         let current_seconds = current_time.as_seconds_f64();
 
-        let x_min = (current_seconds - self.instrument.width).max(0.0);
-        let x_max = current_seconds.max(self.instrument.width);
+        let x_min = (current_seconds - self.width).max(0.0);
+        let x_max = current_seconds.max(self.width);
 
         x_min..x_max
     }
 
     pub fn y_range(&self) -> Range<f64> {
         let (min, max) = self
-            .instrument
             .readings
             .iter()
             .map(|(_time, value)| *value)
@@ -112,7 +119,7 @@ impl<'i, R: Reading> InstrumentChart<'i, R> {
 }
 
 // Custom impl for Empty Datum
-impl<'i, Message, R: Reading> Chart<Message> for InstrumentChart<'i, R> {
+impl<'i, Message, IT: InstrumentType> Chart<Message> for InstrumentView<'i, IT> {
     #[inline]
     fn build_chart<DB: DrawingBackend>(&self, mut builder: ChartBuilder<DB>) {
         let x_range = self.x_range();
@@ -128,7 +135,7 @@ impl<'i, Message, R: Reading> Chart<Message> for InstrumentChart<'i, R> {
             .margin_right(20)
             // Set the caption of the chart
             .caption(
-                &self.instrument.title,
+                IT::TITLE,
                 FontDesc::new(FontFamily::SansSerif, 20.0, FontStyle::Normal)
                     .color(&style::colors::TEXT),
             )
@@ -167,26 +174,22 @@ impl<'i, Message, R: Reading> Chart<Message> for InstrumentChart<'i, R> {
         // TODO: make sure this is tracking correctly cause uh oh
 
         // TODO: Separate when zoom in?
-        for i in 0..R::VALUES {
-            let series = self
-                .instrument
-                .readings
-                .iter()
-                .filter_map(|&(vehicle_time, datum)| {
-                    let time = self
-                        .time_manager
-                        .rebase_vehicle_time(vehicle_time, self.time_base)
-                        .as_seconds_f64();
+        for i in 0..IT::Reading::VALUES {
+            let series = self.readings.iter().filter_map(|&(vehicle_time, datum)| {
+                let time = self
+                    .time_manager
+                    .rebase_vehicle_time(vehicle_time, self.time_base)
+                    .as_seconds_f64();
 
-                    if time < x_range.start {
-                        None
-                    } else {
-                        Some((time, datum.value(i)))
-                    }
-                });
+                if time < x_range.start {
+                    None
+                } else {
+                    Some((time, datum.value(i)))
+                }
+            });
 
             chart
-                .draw_series(LineSeries::new(series, R::style(i)))
+                .draw_series(LineSeries::new(series, IT::Reading::style(i)))
                 .expect("failed to draw series");
         }
     }

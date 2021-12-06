@@ -1,4 +1,4 @@
-use iced::{button, container};
+use iced::{button, container, Vector};
 
 pub struct ControlCluster;
 
@@ -43,14 +43,37 @@ impl button::StyleSheet for ControlCluster {
 
 pub struct Instrument;
 
-impl container::StyleSheet for Instrument {
-    fn style(&self) -> container::Style {
-        container::Style {
+impl button::StyleSheet for Instrument {
+    fn active(&self) -> button::Style {
+        button::Style {
             border_color: colors::BORDER.into(),
             border_width: 1.0,
             border_radius: 5.0,
             background: colors::SURFACE.into(),
             text_color: colors::TEXT.into(),
+            shadow_offset: Vector::new(0.0, 0.0),
+        }
+    }
+
+    fn hovered(&self) -> button::Style {
+        button::Style {
+            border_color: colors::HOVERED.into(),
+            ..Self.active()
+        }
+    }
+
+    fn pressed(&self) -> button::Style {
+        button::Style {
+            border_width: 2.5,
+            ..Self.hovered()
+        }
+    }
+
+    fn disabled(&self) -> button::Style {
+        button::Style {
+            background: colors::BORDER.into(),
+            border_color: colors::ERROR.into(),
+            ..Self.active()
         }
     }
 }

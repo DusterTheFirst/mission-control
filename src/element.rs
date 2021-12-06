@@ -1,30 +1,27 @@
 use iced::{tooltip::Position, Element, Row, Text, Tooltip};
 
-use crate::{
-    style::{self, colors::Color},
-    Message,
-};
+use crate::style::{self, colors::Color};
 
 pub mod ground_station_status;
 pub mod instrument;
 pub mod telemetry_status;
 
-pub(self) fn mono_label_text_tooltip<T: Into<String>>(
+pub(self) fn mono_label_text_tooltip<'m, Message: 'm>(
     label: &str,
-    text: T,
+    text: impl Into<String>,
     tooltip: &str,
     color: Option<Color>,
-) -> Element<'static, Message> {
+) -> Element<'m, Message> {
     Tooltip::new(mono_label_text(label, text, color), tooltip, Position::Top)
         .style(style::Tooltip)
         .into()
 }
 
-pub(self) fn mono_label_text<T: Into<String>>(
+pub(self) fn mono_label_text<'m, Message: 'm>(
     label: &str,
-    text: T,
+    text: impl Into<String>,
     color: Option<Color>,
-) -> Element<'static, Message> {
+) -> Element<'m, Message> {
     let text = Text::new(text).font(style::fonts::MONOSPACE);
 
     Row::new()

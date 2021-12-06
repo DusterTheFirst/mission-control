@@ -3,12 +3,11 @@ use iced::{Align, Column, Element, Length, Space, Text};
 use crate::{
     style::colors::Color,
     time_manager::{base::TimeBase, format_duration, unit::LocalTime, TimeManager},
-    Message,
 };
 
 use super::mono_label_text_tooltip;
 
-pub fn ground_station_status(time_manager: TimeManager) -> Element<'static, Message> {
+pub fn ground_station_status<'m, Message: 'm>(time_manager: TimeManager) -> Element<'m, Message> {
     Column::new()
         .push(Space::new(Length::Shrink, Length::Fill))
         .push(Text::new("Ground Station").size(32))
@@ -25,7 +24,7 @@ pub fn ground_station_status(time_manager: TimeManager) -> Element<'static, Mess
         .into()
 }
 
-fn station_local_time(local_time: LocalTime) -> Element<'static, Message> {
+fn station_local_time<'m, Message: 'm>(local_time: LocalTime) -> Element<'m, Message> {
     let (label, tooltip) = if local_time.is_utc() {
         ("UTC", "Universal Coordinated Time")
     } else {
@@ -40,7 +39,10 @@ fn station_local_time(local_time: LocalTime) -> Element<'static, Message> {
     )
 }
 
-fn time_with_tooltip(time_manager: TimeManager, time_base: TimeBase) -> Element<'static, Message> {
+fn time_with_tooltip<'m, Message: 'm>(
+    time_manager: TimeManager,
+    time_base: TimeBase,
+) -> Element<'m, Message> {
     let (label, tooltip, color) = match time_base {
         TimeBase::GroundControl => (
             "GCT",

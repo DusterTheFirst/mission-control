@@ -3,7 +3,7 @@ use std::{fmt::Debug, iter, ops::Range};
 use interlink::proto::Vector3;
 use plotters::style::{ShapeStyle, BLUE, GREEN, RED};
 
-pub type DatumValuesIter<S> =
+pub type ReadingValuesIter<S> =
     iter::Map<iter::Zip<Range<usize>, iter::Repeat<S>>, fn((usize, S)) -> f64>;
 
 pub trait Reading: Debug + Copy + Sized {
@@ -15,7 +15,7 @@ pub trait Reading: Debug + Copy + Sized {
     fn label(index: usize) -> &'static str;
     fn style(index: usize) -> ShapeStyle;
 
-    fn values(&self) -> DatumValuesIter<Self> {
+    fn values(&self) -> ReadingValuesIter<Self> {
         (0..Self::VALUES)
             .zip(iter::repeat(*self))
             .map(|(index, datum)| datum.value(index))
@@ -29,15 +29,15 @@ impl Reading for EmptyReading {
     const VALUES: usize = 0;
 
     fn value(&self, _: usize) -> f64 {
-        panic!("attempted to access value from EmptyDatum")
+        panic!("attempted to access value from EmptyReading")
     }
 
     fn style(_: usize) -> ShapeStyle {
-        panic!("attempted to access style from EmptyDatum")
+        panic!("attempted to access style from EmptyReading")
     }
 
     fn label(_: usize) -> &'static str {
-        panic!("attempted to access label from EmptyDatum")
+        panic!("attempted to access label from EmptyReading")
     }
 }
 
@@ -82,52 +82,5 @@ impl Reading for Vector3<f64> {
             ),
         }
         .into()
-    }
-}
-
-macro_rules! new_type_reading {
-    ($type:ident: $deref:ty) => {
-        #[derive(Clone, Copy, Debug)]
-        pub struct $type($deref);
-
-        impl Reading for $type {
-            const VALUES: usize = <$deref as Reading>::VALUES;
-
-            fn value(&self, index: usize) -> f64 {
-                self.0.value(index)
-            }
-
-            fn label(index: usize) -> &'static str {
-                <$deref as Reading>::label(index)
-            }
-
-            fn style(index: usize) -> ShapeStyle {
-                <$deref as Reading>::style(index)
-            }
-        }
-    };
-}
-
-new_type_reading!(AccelerometerReading: Vector3<f64>);
-
-impl AccelerometerReading {
-    pub fn from_raw(raw: Vector3<i32>) -> Self {
-        Self(Vector3 {
-            x: (raw.x as f64 * 9.81) / 1000.0,
-            y: (raw.y as f64 * 9.81) / 1000.0,
-            z: (raw.z as f64 * 9.81) / 1000.0,
-        })
-    }
-}
-
-new_type_reading!(MagnetometerReading: Vector3<f64>);
-
-impl MagnetometerReading {
-    pub fn from_raw(raw: Vector3<i32>) -> Self {
-        Self(Vector3 {
-            x: raw.x as f64 / 1000.0,
-            y: raw.y as f64 / 1000.0,
-            z: raw.z as f64 / 1000.0,
-        })
     }
 }
