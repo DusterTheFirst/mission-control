@@ -49,11 +49,7 @@ impl TimeManager {
         }
     }
 
-    pub fn rebase_vehicle_time(
-        &self,
-        vehicle_time: VehicleTime,
-        time_base: TimeBase,
-    ) -> Duration {
+    pub fn rebase_vehicle_time(&self, vehicle_time: VehicleTime, time_base: TimeBase) -> Duration {
         match time_base {
             TimeBase::GroundControl => vehicle_time
                 .received()

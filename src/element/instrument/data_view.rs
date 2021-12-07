@@ -1,4 +1,8 @@
-use std::{convert::Infallible, fmt::Debug, any::{TypeId, type_name}};
+use std::{
+    any::{type_name, TypeId},
+    convert::Infallible,
+    fmt::Debug,
+};
 
 use interlink::proto::Vector3;
 
@@ -17,7 +21,7 @@ pub trait View: 'static + Debug {
 pub enum DataView {
     Accelerometer,
     Magnetometer,
-    Placeholder
+    Placeholder,
 }
 
 impl DataView {
@@ -26,7 +30,7 @@ impl DataView {
             id if id == TypeId::of::<Accelerometer>() => Self::Accelerometer,
             id if id == TypeId::of::<Magnetometer>() => Self::Magnetometer,
             id if id == TypeId::of::<Placeholder>() => Self::Placeholder,
-            _ => panic!("{} is not a known DataView", type_name::<C>())
+            _ => panic!("{} is not a known DataView", type_name::<C>()),
         }
     }
 }

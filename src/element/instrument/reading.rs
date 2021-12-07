@@ -22,6 +22,20 @@ pub trait Reading: Debug + Copy + Sized {
     }
 }
 
+pub trait VectorReading: Reading {
+    fn x(&self) -> f64 {
+        self.value(0)
+    }
+
+    fn y(&self) -> f64 {
+        self.value(1)
+    }
+
+    fn z(&self) -> f64 {
+        self.value(2)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct EmptyReading {}
 
@@ -41,6 +55,7 @@ impl Reading for EmptyReading {
     }
 }
 
+impl VectorReading for Vector3<f64> {}
 impl Reading for Vector3<f64> {
     const VALUES: usize = 3;
 

@@ -7,7 +7,9 @@ use std::{borrow::Cow, time::Duration};
 use comm::serial::{SerialEvent, SerialSubscription};
 use element::instrument::{
     data_view::{Accelerometer, Magnetometer, Placeholder},
-    Instrument, InstrumentMessage,
+    time_series::TimeSeriesInstrument,
+    vector::VectorInstrument,
+    InstrumentMessage,
 };
 use iced::{
     button, executor,
@@ -53,17 +55,17 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug)]
 struct Charts {
-    c01: Instrument<Placeholder>,
-    c02: Instrument<Placeholder>,
-    c03: Instrument<Placeholder>,
-    c04: Instrument<Placeholder>,
-    magnetic_field: Instrument<Magnetometer>,
-    c20: Instrument<Placeholder>,
-    acceleration: Instrument<Accelerometer>,
-    c41: Instrument<Placeholder>,
-    c42: Instrument<Placeholder>,
-    c43: Instrument<Placeholder>,
-    c44: Instrument<Placeholder>,
+    magnetic_field_time: TimeSeriesInstrument<Magnetometer>,
+    magnetic_field_vector: VectorInstrument<Magnetometer>,
+    c03: TimeSeriesInstrument<Placeholder>, // TODO: placeholder instrument?
+    c04: TimeSeriesInstrument<Placeholder>,
+    c10: TimeSeriesInstrument<Placeholder>,
+    c20: TimeSeriesInstrument<Placeholder>,
+    c30: TimeSeriesInstrument<Placeholder>,
+    acceleration_time: TimeSeriesInstrument<Accelerometer>,
+    acceleration_vector: VectorInstrument<Accelerometer>,
+    c43: TimeSeriesInstrument<Placeholder>,
+    c44: TimeSeriesInstrument<Placeholder>,
 }
 
 struct InstrumentCluster {
@@ -115,17 +117,17 @@ impl Application for InstrumentCluster {
                 window_size: (0, 0),
 
                 charts: Charts {
-                    c01: Instrument::new(5.0),
-                    c02: Instrument::new(5.0),
-                    c03: Instrument::new(5.0),
-                    c04: Instrument::new(5.0),
-                    acceleration: Instrument::new(5.0),
-                    c20: Instrument::new(5.0),
-                    magnetic_field: Instrument::new(5.0),
-                    c41: Instrument::new(5.0),
-                    c42: Instrument::new(5.0),
-                    c43: Instrument::new(5.0),
-                    c44: Instrument::new(5.0),
+                    magnetic_field_time: TimeSeriesInstrument::new(5.0),
+                    magnetic_field_vector: VectorInstrument::new(),
+                    c03: TimeSeriesInstrument::new(5.0),
+                    c04: TimeSeriesInstrument::new(5.0),
+                    c10: TimeSeriesInstrument::new(5.0),
+                    c20: TimeSeriesInstrument::new(5.0),
+                    c30: TimeSeriesInstrument::new(5.0),
+                    acceleration_time: TimeSeriesInstrument::new(5.0),
+                    acceleration_vector: VectorInstrument::new(),
+                    c43: TimeSeriesInstrument::new(5.0),
+                    c44: TimeSeriesInstrument::new(5.0),
                 },
 
                 time: TimeManager::setup(),
@@ -179,10 +181,12 @@ impl Application for InstrumentCluster {
 
                 match data {
                     PacketDownData::Magnetometer(reading) => {
-                        self.charts.magnetic_field.add_reading(time, reading);
+                        self.charts.magnetic_field_time.add_reading(time, reading);
+                        self.charts.magnetic_field_vector.set_reading(time, reading);
                     }
                     PacketDownData::Accelerometer(reading) => {
-                        self.charts.acceleration.add_reading(time, reading);
+                        self.charts.acceleration_time.add_reading(time, reading);
+                        self.charts.acceleration_vector.set_reading(time, reading);
                     }
                     PacketDownData::Hello(vehicle_identification) => {
                         self.vehicle.replace(vehicle_identification);
@@ -259,7 +263,7 @@ impl Application for InstrumentCluster {
                         ))
                         .push(
                             self.charts
-                                .magnetic_field
+                                .c10
                                 .view(&self.time, self.time_base)
                                 .map(Message::Instrument),
                         )
@@ -271,7 +275,7 @@ impl Application for InstrumentCluster {
                         )
                         .push(
                             self.charts
-                                .acceleration
+                                .c30
                                 .view(&self.time, self.time_base)
                                 .map(Message::Instrument),
                         )
@@ -289,14 +293,14 @@ impl Application for InstrumentCluster {
                                 .spacing(10)
                                 .push(
                                     self.charts
-                                        .c01
+                                        .magnetic_field_time
                                         .view(&self.time, self.time_base)
                                         .map(Message::Instrument),
                                 )
                                 .push(
                                     self.charts
-                                        .c02
-                                        .view(&self.time, self.time_base)
+                                        .magnetic_field_vector
+                                        .view()
                                         .map(Message::Instrument),
                                 )
                                 .push(
@@ -383,14 +387,14 @@ impl Application for InstrumentCluster {
                                 .spacing(10)
                                 .push(
                                     self.charts
-                                        .c41
+                                        .acceleration_time
                                         .view(&self.time, self.time_base)
                                         .map(Message::Instrument),
                                 )
                                 .push(
                                     self.charts
-                                        .c42
-                                        .view(&self.time, self.time_base)
+                                        .acceleration_vector
+                                        .view()
                                         .map(Message::Instrument),
                                 )
                                 .push(

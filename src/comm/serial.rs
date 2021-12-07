@@ -82,7 +82,7 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
 
                     // TODO: can cause super fast infinite loop when erroring out... Add a delay
                     thread::sleep(Duration::from_secs(1));
-                    
+
                     continue;
                 }
             };
