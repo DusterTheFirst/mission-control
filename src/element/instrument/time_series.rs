@@ -2,7 +2,7 @@ use std::{collections::VecDeque, fmt::Debug, ops::Range};
 
 use iced::{button, Element};
 use plotters::prelude::*;
-use plotters_iced::{Chart, ChartBuilder, DrawingBackend};
+use plotters_iced::{Chart, ChartBuilder, ChartWidget, DrawingBackend};
 
 use crate::{
     style,
@@ -36,12 +36,12 @@ impl<V: View> TimeSeriesInstrument<V> {
     ) -> Element<'s, InstrumentMessage> {
         instrument_view::<V, _>(
             &mut self.button_state,
-            TimeSeriesInstrumentView::<V> {
+            ChartWidget::new(TimeSeriesInstrumentView::<V> {
                 time_manager,
                 time_base,
                 readings: &self.readings,
                 width: self.width,
-            },
+            }),
         )
     }
 

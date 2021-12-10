@@ -1,5 +1,4 @@
 use iced::{button, Button, Container, Element, Length, Space};
-use plotters_iced::{Chart, ChartWidget};
 
 use crate::style;
 
@@ -27,11 +26,11 @@ impl PlaceholderInstrument {
     }
 }
 
-fn instrument_view<'s, V: View, C: Chart<InstrumentMessage> + 's>(
+fn instrument_view<'s, V: View, E: Into<Element<'s, InstrumentMessage>> + 's>(
     button_state: &'s mut button::State,
-    chart: C,
+    content: E,
 ) -> Element<'s, InstrumentMessage> {
-    Button::new(button_state, ChartWidget::new(chart))
+    Button::new(button_state, content)
         .width(Length::Fill)
         .height(Length::Fill)
         .style(style::Instrument)

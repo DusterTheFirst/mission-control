@@ -1,12 +1,16 @@
 use std::ops::Range;
 
-use iced::{button, Element};
+use iced::{
+    button,
+    canvas::{Cursor, Frame, Geometry, LineCap, Path, Program, Stroke},
+    Canvas, Element, Point, Rectangle,
+};
 use plotters::{
     prelude::LineSeries,
     style::{Color, FontDesc, ShapeStyle, RED},
 };
 use plotters_backend::{DrawingBackend, FontFamily, FontStyle};
-use plotters_iced::{Chart, ChartBuilder};
+use plotters_iced::{Chart, ChartBuilder, ChartWidget};
 
 use crate::{style, time_manager::unit::VehicleTime};
 
@@ -37,9 +41,18 @@ where
     pub fn view(&mut self) -> Element<InstrumentMessage> {
         instrument_view::<V, _>(
             &mut self.button_state,
-            VectorInstrumentView::<V> {
+            ChartWidget::new(VectorInstrumentView::<V> {
                 reading: self.reading.as_ref(),
-            },
+            }),
+        )
+    }
+
+    pub fn view_alt(&mut self) -> Element<InstrumentMessage> {
+        instrument_view::<V, _>(
+            &mut self.button_state,
+            Canvas::new(VectorInstrumentView::<V> {
+                reading: self.reading.as_ref(),
+            }),
         )
     }
 
@@ -56,6 +69,45 @@ where
     V::Reading: VectorReading,
 {
     reading: Option<&'i (VehicleTime, V::Reading)>,
+}
+
+impl<'i, V: View> Program<InstrumentMessage> for VectorInstrumentView<'i, V>
+where
+    V::Reading: VectorReading,
+{
+    fn draw(&self, bounds: Rectangle, cursor: Cursor) -> Vec<Geometry> {
+        let mut frame = Frame::new(bounds.size());
+
+        if let Some((_time, reading)) = self.reading {
+            // let x = reading.x() / frame.width() as f64;
+            // let y = reading.y() / frame.width() as f64;
+
+            let angle = reading.y().atan2(reading.x());
+
+            dbg!(angle.to_degrees());
+
+            let path = Path::new(|path| {
+                path.move_to(frame.center());
+                path.line_to(Point::new(
+                    (reading.x() / reading.y()) as f32 * frame.width() / 2.0 + frame.width() / 2.0,
+                    (reading.y() / reading.x()) as f32 * frame.height() / 2.0
+                        + frame.height() / 2.0,
+                ));
+            });
+
+            frame.stroke(
+                &path,
+                Stroke {
+                    color: style::colors::TEXT.into(),
+                    width: 3.0,
+                    line_cap: LineCap::Square,
+                    ..Default::default()
+                },
+            );
+        }
+
+        vec![frame.into_geometry()]
+    }
 }
 
 impl<'i, V: View> VectorInstrumentView<'i, V>

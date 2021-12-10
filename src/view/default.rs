@@ -96,7 +96,7 @@ fn left_column<'app>(
                 .view(time, time_base)
                 .map(Message::Instrument),
         )
-        .push(magnetic_field_vector.view().map(Message::Instrument))
+        .push(magnetic_field_vector.view_alt().map(Message::Instrument))
         .push(PlaceholderInstrument::view().map(Message::Instrument))
         .push(PlaceholderInstrument::view().map(Message::Instrument))
         .into()
