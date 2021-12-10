@@ -2,11 +2,11 @@
 #![deny(clippy::unwrap_used, clippy::trivially_copy_pass_by_ref)]
 #![warn(clippy::unwrap_in_result, clippy::missing_const_for_fn)]
 
-use std::{borrow::Cow, time::Duration};
+use std::time::Duration;
 
 use comm::serial::{SerialEvent, SerialSubscription};
 use element::instrument::{
-    data_view::{Accelerometer, Magnetometer, Placeholder},
+    data_view::{Accelerometer, DataView, Magnetometer},
     time_series::TimeSeriesInstrument,
     vector::VectorInstrument,
     InstrumentMessage,
@@ -16,8 +16,7 @@ use iced::{
     keyboard::{self, KeyCode, Modifiers},
     pick_list,
     window::{self, Mode},
-    Align, Application, Button, Clipboard, Color, Column, Command, Container, Element,
-    HorizontalAlignment, Length, PickList, Row, Settings, Subscription, Text,
+    Application, Clipboard, Color, Command, Container, Element, Length, Settings, Subscription,
 };
 use iced_native::{event, subscription, Event};
 use insomnia::Lock;
@@ -28,16 +27,14 @@ use interlink::{
 use time_manager::{base::TimeBase, unit::VehicleTime, TimeManager};
 use tracing_subscriber::EnvFilter;
 use util::inhibit_sleep;
-
-use crate::element::{
-    ground_station_status::ground_station_status, telemetry_status::telemetry_status,
-};
+use view::{acceleration, default, magnetic_field};
 
 mod comm;
 mod element;
 mod style;
 mod time_manager;
 mod util;
+mod view;
 
 pub fn main() -> iced::Result {
     dotenv::dotenv().ok();
@@ -54,21 +51,15 @@ pub fn main() -> iced::Result {
 }
 
 #[derive(Debug)]
-struct Charts {
+struct Instruments {
     magnetic_field_time: TimeSeriesInstrument<Magnetometer>,
     magnetic_field_vector: VectorInstrument<Magnetometer>,
-    c03: TimeSeriesInstrument<Placeholder>, // TODO: placeholder instrument?
-    c04: TimeSeriesInstrument<Placeholder>,
-    c10: TimeSeriesInstrument<Placeholder>,
-    c20: TimeSeriesInstrument<Placeholder>,
-    c30: TimeSeriesInstrument<Placeholder>,
+
     acceleration_time: TimeSeriesInstrument<Accelerometer>,
     acceleration_vector: VectorInstrument<Accelerometer>,
-    c43: TimeSeriesInstrument<Placeholder>,
-    c44: TimeSeriesInstrument<Placeholder>,
 }
 
-struct InstrumentCluster {
+pub struct InstrumentCluster {
     quit: bool,
     window_focused: bool,
     window_mode: Mode,
@@ -77,7 +68,8 @@ struct InstrumentCluster {
     time: TimeManager,
     time_base: TimeBase,
 
-    charts: Charts,
+    instruments: Instruments,
+    data_view: Option<DataView>,
 
     serial: SerialSubscription,
     interlink: Option<InterlinkMethod>,
@@ -92,7 +84,7 @@ struct InstrumentCluster {
 }
 
 #[derive(Debug, Clone)]
-enum Message {
+pub enum Message {
     Quit,
     Refresh,
     ToggleFullscreen,
@@ -116,19 +108,14 @@ impl Application for InstrumentCluster {
                 window_mode: Mode::Windowed,
                 window_size: (0, 0),
 
-                charts: Charts {
+                instruments: Instruments {
                     magnetic_field_time: TimeSeriesInstrument::new(5.0),
                     magnetic_field_vector: VectorInstrument::new(),
-                    c03: TimeSeriesInstrument::new(5.0),
-                    c04: TimeSeriesInstrument::new(5.0),
-                    c10: TimeSeriesInstrument::new(5.0),
-                    c20: TimeSeriesInstrument::new(5.0),
-                    c30: TimeSeriesInstrument::new(5.0),
+
                     acceleration_time: TimeSeriesInstrument::new(5.0),
                     acceleration_vector: VectorInstrument::new(),
-                    c43: TimeSeriesInstrument::new(5.0),
-                    c44: TimeSeriesInstrument::new(5.0),
                 },
+                data_view: None,
 
                 time: TimeManager::setup(),
                 time_base: TimeBase::GroundControl,
@@ -181,12 +168,20 @@ impl Application for InstrumentCluster {
 
                 match data {
                     PacketDownData::Magnetometer(reading) => {
-                        self.charts.magnetic_field_time.add_reading(time, reading);
-                        self.charts.magnetic_field_vector.set_reading(time, reading);
+                        self.instruments
+                            .magnetic_field_time
+                            .add_reading(time, reading);
+                        self.instruments
+                            .magnetic_field_vector
+                            .set_reading(time, reading);
                     }
                     PacketDownData::Accelerometer(reading) => {
-                        self.charts.acceleration_time.add_reading(time, reading);
-                        self.charts.acceleration_vector.set_reading(time, reading);
+                        self.instruments
+                            .acceleration_time
+                            .add_reading(time, reading);
+                        self.instruments
+                            .acceleration_vector
+                            .set_reading(time, reading);
                     }
                     PacketDownData::Hello(vehicle_identification) => {
                         self.vehicle.replace(vehicle_identification);
@@ -203,8 +198,12 @@ impl Application for InstrumentCluster {
                 self.vehicle.take();
             }
             Message::ChangeTimeBase(time_base) => self.time_base = time_base,
-            Message::Instrument(message) => {
-                dbg!(message);
+            Message::Instrument(InstrumentMessage::Selected(data_view)) => {
+                if self.data_view == Some(data_view) {
+                    self.data_view.take();
+                } else {
+                    self.data_view.replace(data_view);
+                }
             }
         }
 
@@ -245,176 +244,15 @@ impl Application for InstrumentCluster {
     }
 
     fn view(&mut self) -> Element<Self::Message> {
-        Container::new(
-            Column::new()
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .spacing(10)
-                .padding(10)
-                .push(
-                    Row::new()
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .spacing(10)
-                        .push(telemetry_status(
-                            self.time,
-                            self.interlink,
-                            self.vehicle.as_ref(),
-                        ))
-                        .push(
-                            self.charts
-                                .c10
-                                .view(&self.time, self.time_base)
-                                .map(Message::Instrument),
-                        )
-                        .push(
-                            self.charts
-                                .c20
-                                .view(&self.time, self.time_base)
-                                .map(Message::Instrument),
-                        )
-                        .push(
-                            self.charts
-                                .c30
-                                .view(&self.time, self.time_base)
-                                .map(Message::Instrument),
-                        )
-                        .push(ground_station_status(self.time)),
-                )
-                .push(
-                    Row::new()
-                        .width(Length::Fill)
-                        .height(Length::FillPortion(4))
-                        .spacing(10)
-                        .push(
-                            Column::new()
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(10)
-                                .push(
-                                    self.charts
-                                        .magnetic_field_time
-                                        .view(&self.time, self.time_base)
-                                        .map(Message::Instrument),
-                                )
-                                .push(
-                                    self.charts
-                                        .magnetic_field_vector
-                                        .view()
-                                        .map(Message::Instrument),
-                                )
-                                .push(
-                                    self.charts
-                                        .c03
-                                        .view(&self.time, self.time_base)
-                                        .map(Message::Instrument),
-                                )
-                                .push(
-                                    self.charts
-                                        .c04
-                                        .view(&self.time, self.time_base)
-                                        .map(Message::Instrument),
-                                ),
-                        )
-                        .push(
-                            Container::new(
-                                Container::new(
-                                    Column::new()
-                                        .push(
-                                            Text::new("Control Cluster")
-                                                .size(32)
-                                                .horizontal_alignment(HorizontalAlignment::Center),
-                                        )
-                                        .push(PickList::new(
-                                            &mut self.time_base_picker,
-                                            Cow::Borrowed(TimeBase::ALL),
-                                            Some(self.time_base),
-                                            Message::ChangeTimeBase,
-                                        ))
-                                        .push(
-                                            Text::new(format!(
-                                                "Window Size: {:?}",
-                                                self.window_size
-                                            ))
-                                            .horizontal_alignment(HorizontalAlignment::Center),
-                                        )
-                                        .push(
-                                            Text::new(format!("Focused: {}", self.window_focused))
-                                                .horizontal_alignment(HorizontalAlignment::Center),
-                                        )
-                                        .push(
-                                            Row::new()
-                                                .push(
-                                                    Button::new(
-                                                        &mut self.fullscreen_button,
-                                                        Text::new(match self.window_mode {
-                                                            Mode::Windowed => "Fullscreen",
-                                                            Mode::Fullscreen => "Windowed",
-                                                        }),
-                                                    )
-                                                    .on_press(Message::ToggleFullscreen)
-                                                    .style(style::ControlCluster),
-                                                )
-                                                .push(
-                                                    Button::new(
-                                                        &mut self.quit_button,
-                                                        Text::new("Quit"),
-                                                    )
-                                                    .on_press(Message::Quit)
-                                                    .style(style::ControlCluster),
-                                                )
-                                                .spacing(50),
-                                        )
-                                        .spacing(10)
-                                        .align_items(Align::Center)
-                                        .width(Length::Shrink)
-                                        .height(Length::Shrink),
-                                )
-                                .padding(10)
-                                .style(style::ControlCluster)
-                                .width(Length::Shrink)
-                                .height(Length::Shrink),
-                            )
-                            .width(Length::FillPortion(3))
-                            .height(Length::Fill)
-                            .center_x()
-                            .center_y(),
-                        )
-                        .push(
-                            Column::new()
-                                .width(Length::Fill)
-                                .height(Length::Fill)
-                                .spacing(10)
-                                .push(
-                                    self.charts
-                                        .acceleration_time
-                                        .view(&self.time, self.time_base)
-                                        .map(Message::Instrument),
-                                )
-                                .push(
-                                    self.charts
-                                        .acceleration_vector
-                                        .view()
-                                        .map(Message::Instrument),
-                                )
-                                .push(
-                                    self.charts
-                                        .c43
-                                        .view(&self.time, self.time_base)
-                                        .map(Message::Instrument),
-                                )
-                                .push(
-                                    self.charts
-                                        .c44
-                                        .view(&self.time, self.time_base)
-                                        .map(Message::Instrument),
-                                ),
-                        ),
-                ),
-        )
+        Container::new(match self.data_view {
+            None => default::view(self),
+            Some(DataView::Accelerometer) => acceleration::view(self),
+            Some(DataView::Magnetometer) => magnetic_field::view(self),
+        })
         .width(Length::Fill)
         .height(Length::Fill)
         .style(style::Window)
+        .padding(10)
         .into()
     }
 

@@ -36,25 +36,6 @@ pub trait VectorReading: Reading {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct EmptyReading {}
-
-impl Reading for EmptyReading {
-    const VALUES: usize = 0;
-
-    fn value(&self, _: usize) -> f64 {
-        panic!("attempted to access value from EmptyReading")
-    }
-
-    fn style(_: usize) -> ShapeStyle {
-        panic!("attempted to access style from EmptyReading")
-    }
-
-    fn label(_: usize) -> &'static str {
-        panic!("attempted to access label from EmptyReading")
-    }
-}
-
 impl VectorReading for Vector3<f64> {}
 impl Reading for Vector3<f64> {
     const VALUES: usize = 3;

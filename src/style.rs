@@ -43,6 +43,20 @@ impl button::StyleSheet for ControlCluster {
 
 pub struct Instrument;
 
+impl container::StyleSheet for Instrument {
+    fn style(&self) -> container::Style {
+        let button_style = button::StyleSheet::active(self);
+
+        container::Style {
+            text_color: button_style.text_color.into(),
+            background: button_style.background,
+            border_radius: button_style.border_radius,
+            border_width: button_style.border_width,
+            border_color: button_style.border_color,
+        }
+    }
+}
+
 impl button::StyleSheet for Instrument {
     fn active(&self) -> button::Style {
         button::Style {

@@ -136,11 +136,15 @@ pub fn serial_listener(sender: Sender<SerialEvent>, refresh_interval: Duration) 
                 }
 
                 match postcard::from_bytes_cobs::<PacketDown>(&mut data_storage[..amount]) {
-                    Ok(packet) => {
-                        sender
-                            .send(SerialEvent::PacketReceived(packet))
-                            .expect("unable to send SerialEvent");
-                    }
+                    Ok(packet) => match sender.send(SerialEvent::PacketReceived(packet)) {
+                        Ok(()) => {}
+                        Err(_) => {
+                            // End the thread if the channel has closed
+                            trace!("SerialEvent channel closed, shutting down thread");
+
+                            return;
+                        }
+                    },
                     Err(error) => {
                         error!(%error, "Failed to deserialize data");
                         break;

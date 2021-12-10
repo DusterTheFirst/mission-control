@@ -1,12 +1,11 @@
 use std::{
     any::{type_name, TypeId},
-    convert::Infallible,
     fmt::Debug,
 };
 
 use interlink::proto::Vector3;
 
-use super::reading::{EmptyReading, Reading};
+use super::reading::Reading;
 
 pub trait View: 'static + Debug {
     type Reading: Reading;
@@ -17,11 +16,10 @@ pub trait View: 'static + Debug {
     fn ingest_reading(raw: Self::Raw) -> Self::Reading;
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataView {
     Accelerometer,
     Magnetometer,
-    Placeholder,
 }
 
 impl DataView {
@@ -29,23 +27,8 @@ impl DataView {
         match TypeId::of::<C>() {
             id if id == TypeId::of::<Accelerometer>() => Self::Accelerometer,
             id if id == TypeId::of::<Magnetometer>() => Self::Magnetometer,
-            id if id == TypeId::of::<Placeholder>() => Self::Placeholder,
             _ => panic!("{} is not a known DataView", type_name::<C>()),
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct Placeholder;
-
-impl View for Placeholder {
-    type Reading = EmptyReading;
-    type Raw = Infallible;
-
-    const TITLE: &'static str = "Placeholder";
-
-    fn ingest_reading(_raw: Self::Raw) -> Self::Reading {
-        panic!("Attempted to create a reading in a placeholder instrument")
     }
 }
 

@@ -46,14 +46,22 @@ impl<V: View> TimeSeriesInstrument<V> {
     }
 
     pub fn add_reading(&mut self, vehicle_time: VehicleTime, raw: V::Raw) {
+        // FIXME: does not respect time-base or disconnects
+        // TODO: there is a kinda fix in there to just remove all data points before this on in time
+        // but this is not really a good one
         let reading = V::ingest_reading(raw);
 
         self.readings.retain({
             let max_duration = vehicle_time.as_duration();
             let width = self.width;
 
-            move |&(time, _)| (max_duration - time.as_duration()).as_seconds_f64() < width
+            move |&(time, _)| {
+                let difference = (max_duration - time.as_duration()).as_seconds_f64();
+                difference > 0.0 && difference < width
+            }
         });
+
+        dbg!(self.readings.len());
 
         self.readings.push_back((vehicle_time, reading));
     }

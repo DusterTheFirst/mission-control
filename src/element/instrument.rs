@@ -1,4 +1,4 @@
-use iced::{button, Button, Element, Length};
+use iced::{button, Button, Container, Element, Length, Space};
 use plotters_iced::{Chart, ChartWidget};
 
 use crate::style;
@@ -13,6 +13,18 @@ pub mod vector;
 #[derive(Debug, Clone, Copy)]
 pub enum InstrumentMessage {
     Selected(DataView),
+}
+
+pub struct PlaceholderInstrument {}
+
+impl PlaceholderInstrument {
+    pub fn view<'s>() -> Element<'s, InstrumentMessage> {
+        Container::new(Space::new(Length::Fill, Length::Fill))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(style::Instrument)
+            .into()
+    }
 }
 
 fn instrument_view<'s, V: View, C: Chart<InstrumentMessage> + 's>(
