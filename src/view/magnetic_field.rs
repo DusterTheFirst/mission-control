@@ -23,7 +23,7 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
                     Container::new(
                         app.instruments
                             .magnetic_field_vector
-                            .view()
+                            .view_alt()
                             .map(Message::Instrument),
                     )
                     .width(Length::FillPortion(2))

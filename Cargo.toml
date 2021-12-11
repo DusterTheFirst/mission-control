@@ -1,7 +1,10 @@
 [package]
+authors = ["Zachary Kohnen <me@dusterthefirst.com>"]
 name = "ground-station"
 version = "0.0.0"
 edition = "2021"
+license = "MIT OR Apache-2.0"
+publish = false
 
 [dependencies]
 iced_native = "0.4.0"

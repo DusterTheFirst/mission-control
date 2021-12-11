@@ -61,7 +61,7 @@ impl<V: View> TimeSeriesInstrument<V> {
             }
         });
 
-        dbg!(self.readings.len());
+        // dbg!(self.readings.len()); TODO:
 
         self.readings.push_back((vehicle_time, reading));
     }
@@ -141,7 +141,7 @@ impl<'i, V: View> Chart<InstrumentMessage> for TimeSeriesInstrumentView<'i, V> {
             )
             .x_label_style(axis_label_style.clone())
             .y_label_style(axis_label_style.clone())
-            .axis_desc_style(axis_label_style)
+            .axis_desc_style(axis_label_style.clone())
             // We can customize the maximum number of labels allowed for each axis
             .x_labels(5)
             .y_labels(5)
@@ -170,7 +170,20 @@ impl<'i, V: View> Chart<InstrumentMessage> for TimeSeriesInstrumentView<'i, V> {
 
             chart
                 .draw_series(LineSeries::new(series, V::Reading::style(i)))
-                .expect("failed to draw time series");
+                .expect("failed to draw time series")
+                .label(V::Reading::label(i))
+                .legend(move |(x, y)| {
+                    PathElement::new([(x, y), (x + 20, y)], V::Reading::style(i))
+                });
         }
+
+        chart
+            .configure_series_labels()
+            .position(SeriesLabelPosition::UpperRight)
+            .label_font(axis_label_style)
+            .background_style(style::colors::SURFACE) // TODO:
+            .border_style(style::colors::BORDER)
+            .draw()
+            .expect("failed to draw time series labels");
     }
 }

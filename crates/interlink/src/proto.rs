@@ -10,7 +10,7 @@ use crate::vehicle_time::VehicleTime;
 pub enum PacketUp {
     /// Packet sent to the vehicle upon connecting.
     ///
-    /// The vehicle should respond with a [`PacketDown::Hello`].
+    /// The vehicle should respond with a [`PacketDownData::Hello`].
     Welcome,
 }
 

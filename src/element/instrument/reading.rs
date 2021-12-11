@@ -10,8 +10,6 @@ pub trait Reading: Debug + Copy + Sized {
     const VALUES: usize;
 
     fn value(&self, index: usize) -> f64;
-
-    // TODO: use
     fn label(index: usize) -> &'static str;
     fn style(index: usize) -> ShapeStyle;
 
@@ -55,9 +53,9 @@ impl Reading for Vector3<f64> {
 
     fn label(index: usize) -> &'static str {
         match index {
-            0 => "x",
-            1 => "y",
-            2 => "z",
+            0 => "X",
+            1 => "Y",
+            2 => "Z",
             _ => panic!(
                 "attempted to access label out of bounds: {} > {}",
                 index,

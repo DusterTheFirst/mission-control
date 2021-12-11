@@ -1,9 +1,9 @@
-use std::ops::Range;
+use std::{f32::consts::FRAC_PI_2, ops::Range};
 
 use iced::{
     button,
-    canvas::{Cursor, Frame, Geometry, LineCap, Path, Program, Stroke},
-    Canvas, Element, Point, Rectangle,
+    canvas::{path::Arc, Cursor, Frame, Geometry, LineCap, Path, Program, Stroke, Text},
+    Canvas, Element, Length, Point, Rectangle, Vector,
 };
 use plotters::{
     prelude::LineSeries,
@@ -52,7 +52,9 @@ where
             &mut self.button_state,
             Canvas::new(VectorInstrumentView::<V> {
                 reading: self.reading.as_ref(),
-            }),
+            })
+            .width(Length::Fill)
+            .height(Length::Fill),
         )
     }
 
@@ -76,27 +78,53 @@ where
     V::Reading: VectorReading,
 {
     fn draw(&self, bounds: Rectangle, cursor: Cursor) -> Vec<Geometry> {
+        let margin = 10.0;
+
         let mut frame = Frame::new(bounds.size());
+        let center = frame.center();
+        let radius = frame.width().min(frame.height()) / 2.0 - margin;
+
+        frame.stroke(
+            &Path::new(|path| {
+                path.move_to(center);
+                path.circle(center, radius);
+            }),
+            Stroke {
+                color: style::colors::TEXT.into(),
+                width: 1.0,
+                ..Default::default()
+            },
+        );
 
         if let Some((_time, reading)) = self.reading {
-            // let x = reading.x() / frame.width() as f64;
-            // let y = reading.y() / frame.width() as f64;
+            let angle = reading.y().atan2(reading.x()) as f32;
 
-            let angle = reading.y().atan2(reading.x());
-
-            dbg!(angle.to_degrees());
-
-            let path = Path::new(|path| {
-                path.move_to(frame.center());
-                path.line_to(Point::new(
-                    (reading.x() / reading.y()) as f32 * frame.width() / 2.0 + frame.width() / 2.0,
-                    (reading.y() / reading.x()) as f32 * frame.height() / 2.0
-                        + frame.height() / 2.0,
-                ));
-            });
+            let display_angle = -angle;
 
             frame.stroke(
-                &path,
+                &Path::new(|path| {
+                    path.arc(Arc {
+                        center,
+                        radius: radius / 2.0,
+                        start_angle: 0.0,
+                        end_angle: display_angle,
+                    })
+                }),
+                Stroke {
+                    color: style::colors::ACCENT.into(),
+                    width: 1.0,
+                    ..Default::default()
+                },
+            );
+
+            frame.stroke(
+                &Path::new(|path| {
+                    path.move_to(frame.center());
+                    path.line_to(Point::new(
+                        center.x + radius * display_angle.cos(),
+                        center.y + radius * display_angle.sin(),
+                    ));
+                }),
                 Stroke {
                     color: style::colors::TEXT.into(),
                     width: 3.0,
@@ -104,6 +132,12 @@ where
                     ..Default::default()
                 },
             );
+
+            frame.fill_text(Text {
+                color: style::colors::TEXT.into(),
+                content: angle.to_degrees().to_string(),
+                ..Default::default()
+            });
         }
 
         vec![frame.into_geometry()]

@@ -15,11 +15,11 @@ pub enum InterlinkMethod {
 pub mod serial {
     /// USB Vendor ID: 0x1209
     ///
-    /// http://voti.nl/pids/
+    /// <http://voti.nl/pids/>
     pub const VID: u16 = 0x16C0;
     /// USB Product ID: 0x0001
     ///
-    /// http://voti.nl/pids/
+    /// <http://voti.nl/pids/>
     pub const PID: u16 = 0x03E8;
 
     /// The size of the Serial buffer to use.
