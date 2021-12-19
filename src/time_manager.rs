@@ -5,7 +5,7 @@ use self::{
     unit::{LocalTime, VehicleTime},
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct TimeManager {
     now: LocalTime,
     ground_control_on: LocalTime,

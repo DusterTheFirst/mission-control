@@ -1,7 +1,4 @@
-use std::{
-    any::{type_name, TypeId},
-    fmt::Debug,
-};
+use std::fmt::Debug;
 
 use interlink::proto::Vector3;
 
@@ -10,6 +7,8 @@ use super::reading::Reading;
 pub trait View: 'static + Debug {
     type Reading: Reading;
     type Raw;
+
+    const DATA_VIEW: DataView;
 
     const TITLE: &'static str;
 
@@ -20,15 +19,12 @@ pub trait View: 'static + Debug {
 pub enum DataView {
     Accelerometer,
     Magnetometer,
+    Temperature,
 }
 
 impl DataView {
-    pub fn from_view<C: View>() -> Self {
-        match TypeId::of::<C>() {
-            id if id == TypeId::of::<Accelerometer>() => Self::Accelerometer,
-            id if id == TypeId::of::<Magnetometer>() => Self::Magnetometer,
-            _ => panic!("{} is not a known DataView", type_name::<C>()),
-        }
+    pub fn from_view<V: View>() -> Self {
+        V::DATA_VIEW
     }
 }
 
@@ -38,6 +34,8 @@ pub struct Accelerometer;
 impl View for Accelerometer {
     type Reading = Vector3<f64>;
     type Raw = Vector3<i32>;
+
+    const DATA_VIEW: DataView = DataView::Accelerometer;
 
     const TITLE: &'static str = "Acceleration";
 
@@ -57,6 +55,8 @@ impl View for Magnetometer {
     type Reading = Vector3<f64>;
     type Raw = Vector3<i32>;
 
+    const DATA_VIEW: DataView = DataView::Magnetometer;
+
     const TITLE: &'static str = "Magnetic Field";
 
     fn ingest_reading(raw: Self::Raw) -> Self::Reading {
@@ -65,5 +65,21 @@ impl View for Magnetometer {
             y: raw.y as f64 / 1000.0,
             z: raw.z as f64 / 1000.0,
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Temperature;
+
+impl View for Temperature {
+    type Reading = f64;
+    type Raw = f32;
+
+    const DATA_VIEW: DataView = DataView::Temperature;
+
+    const TITLE: &'static str = "Temperature";
+
+    fn ingest_reading(raw: Self::Raw) -> Self::Reading {
+        raw as f64
     }
 }

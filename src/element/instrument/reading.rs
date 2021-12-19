@@ -78,3 +78,41 @@ impl Reading for Vector3<f64> {
         .into()
     }
 }
+
+impl Reading for f64 {
+    const VALUES: usize = 1;
+
+    fn value(&self, index: usize) -> f64 {
+        match index {
+            0 => *self,
+            _ => panic!(
+                "attempted to access value out of bounds: {} > {}",
+                index,
+                Self::VALUES - 1
+            ),
+        }
+    }
+
+    fn label(index: usize) -> &'static str {
+        match index {
+            0 => "Value",
+            _ => panic!(
+                "attempted to access label out of bounds: {} > {}",
+                index,
+                Self::VALUES - 1
+            ),
+        }
+    }
+
+    fn style(index: usize) -> ShapeStyle {
+        match index {
+            0 => RED,
+            _ => panic!(
+                "attempted to access style out of bounds: {} > {}",
+                index,
+                Self::VALUES - 1
+            ),
+        }
+        .into()
+    }
+}

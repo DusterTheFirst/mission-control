@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub fn telemetry_status<'m, Message: 'm>(
-    time_manager: TimeManager,
+    time_manager: &TimeManager,
     interlink: Option<InterlinkMethod>,
     vehicle: Option<&VehicleIdentification>,
 ) -> Element<'m, Message> {
@@ -44,7 +44,7 @@ fn interpolate_error_color(progress: f32) -> Color {
     )
 }
 
-fn time_since_last_packet<'m, Message: 'm>(time_manager: TimeManager) -> Element<'m, Message> {
+fn time_since_last_packet<'m, Message: 'm>(time_manager: &TimeManager) -> Element<'m, Message> {
     let (time_since_last_packet, color) =
         if let Some(time_since_last_packet) = time_manager.duration_since_last_packet() {
             let color = match time_since_last_packet.whole_milliseconds() {

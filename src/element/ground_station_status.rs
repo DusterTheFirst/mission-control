@@ -7,7 +7,7 @@ use crate::{
 
 use super::mono_label_text_tooltip;
 
-pub fn ground_station_status<'m, Message: 'm>(time_manager: TimeManager) -> Element<'m, Message> {
+pub fn ground_station_status<'m, Message: 'm>(time_manager: &TimeManager) -> Element<'m, Message> {
     Column::new()
         .push(Space::new(Length::Shrink, Length::Fill))
         .push(Text::new("Ground Station").size(32))
@@ -40,7 +40,7 @@ fn station_local_time<'m, Message: 'm>(local_time: LocalTime) -> Element<'m, Mes
 }
 
 fn time_with_tooltip<'m, Message: 'm>(
-    time_manager: TimeManager,
+    time_manager: &TimeManager,
     time_base: TimeBase,
 ) -> Element<'m, Message> {
     let (label, tooltip, color) = match time_base {

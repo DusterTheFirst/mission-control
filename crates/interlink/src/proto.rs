@@ -16,7 +16,7 @@ pub enum PacketUp {
 
 /// Packet sent from the vehicle to the station.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct PacketDown {
     /// When the packet was sent.
     pub time: VehicleTime,
@@ -26,14 +26,16 @@ pub struct PacketDown {
 
 /// Data portion of a packet sent from the vehicle to the station.
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum PacketDownData {
     /// Sent in response to [`PacketUp::Welcome`] to identify the vehicle.
     Hello(VehicleIdentification),
-    /// Raw magnetometer data in nT (nanotesla).
+    /// Magnetometer data in nT (nanotesla).
     Magnetometer(Vector3<i32>),
-    /// Raw accelerometer data in mg (milli-g) where 1g is 9.8m/s².
+    /// Accelerometer data in mg (milli-g) where 1g is 9.8m/s².
     Accelerometer(Vector3<i32>),
+    /// eCompass temperature data in *C
+    ECompassTemperature(f32),
 }
 
 /// Identification information about a vehicle

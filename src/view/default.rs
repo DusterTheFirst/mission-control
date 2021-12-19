@@ -10,7 +10,7 @@ use crate::{
     element::{
         ground_station_status::ground_station_status,
         instrument::{
-            data_view::{Accelerometer, Magnetometer},
+            data_view::{Accelerometer, Magnetometer, Temperature},
             time_series::TimeSeriesInstrument,
             vector::VectorInstrument,
             PlaceholderInstrument,
@@ -27,7 +27,13 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
         .width(Length::Fill)
         .height(Length::Fill)
         .spacing(10)
-        .push(top_row(app.time, app.interlink, app.vehicle.as_ref()))
+        .push(top_row(
+            &mut app.instruments.temperature,
+            &app.time,
+            app.time_base,
+            app.interlink,
+            app.vehicle.as_ref(),
+        ))
         .push(
             Row::new()
                 .width(Length::Fill)
@@ -64,18 +70,24 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
         .into()
 }
 
-fn top_row(
-    time: TimeManager,
+fn top_row<'app>(
+    temperature: &'app mut TimeSeriesInstrument<Temperature>,
+    time: &'app TimeManager,
+    time_base: TimeBase,
     interlink: Option<InterlinkMethod>,
     vehicle: Option<&VehicleIdentification>,
-) -> Element<Message> {
+) -> Element<'app, Message> {
     Row::new()
         .width(Length::Fill)
         .height(Length::Fill)
         .spacing(10)
         .push(telemetry_status(time, interlink, vehicle))
         .push(PlaceholderInstrument::view().map(Message::Instrument))
-        .push(PlaceholderInstrument::view().map(Message::Instrument))
+        .push(
+            temperature
+                .view(time, time_base, false)
+                .map(Message::Instrument),
+        )
         .push(PlaceholderInstrument::view().map(Message::Instrument))
         .push(ground_station_status(time))
         .into()
@@ -114,7 +126,7 @@ fn right_column<'app>(
         .spacing(10)
         .push(
             acceleration_time
-                .view(time, time_base,false)
+                .view(time, time_base, false)
                 .map(Message::Instrument),
         )
         .push(acceleration_vector.view(false).map(Message::Instrument))

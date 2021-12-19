@@ -15,7 +15,7 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .push(telemetry_status(
-                    app.time,
+                    &app.time,
                     app.interlink,
                     app.vehicle.as_ref(),
                 ))
@@ -29,12 +29,12 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
                     .width(Length::FillPortion(2))
                     .height(Length::Fill),
                 )
-                .push(ground_station_status(app.time)),
+                .push(ground_station_status(&app.time)),
         )
         .push(
             app.instruments
                 .magnetic_field_time
-                .view(&app.time, app.time_base,true)
+                .view(&app.time, app.time_base, true)
                 .map(Message::Instrument),
         )
         .into()

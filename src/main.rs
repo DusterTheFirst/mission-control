@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use comm::serial::{SerialEvent, SerialSubscription};
 use element::instrument::{
-    data_view::{Accelerometer, DataView, Magnetometer},
+    data_view::{Accelerometer, DataView, Magnetometer, Temperature},
     time_series::TimeSeriesInstrument,
     vector::VectorInstrument,
     InstrumentMessage,
@@ -57,6 +57,8 @@ struct Instruments {
 
     acceleration_time: TimeSeriesInstrument<Accelerometer>,
     acceleration_vector: VectorInstrument<Accelerometer>,
+
+    temperature: TimeSeriesInstrument<Temperature>,
 }
 
 pub struct InstrumentCluster {
@@ -114,6 +116,8 @@ impl Application for InstrumentCluster {
 
                     acceleration_time: TimeSeriesInstrument::new(5.0),
                     acceleration_vector: VectorInstrument::new(),
+
+                    temperature: TimeSeriesInstrument::new(5.0),
                 },
                 data_view: None,
 
@@ -178,6 +182,9 @@ impl Application for InstrumentCluster {
                             .acceleration_time
                             .add_reading(time, reading);
                         self.instruments.acceleration_vector.set_reading(reading);
+                    }
+                    PacketDownData::ECompassTemperature(temperature) => {
+                        self.instruments.temperature.add_reading(time, temperature)
                     }
                     PacketDownData::Hello(vehicle_identification) => {
                         self.vehicle.replace(vehicle_identification);
@@ -244,6 +251,7 @@ impl Application for InstrumentCluster {
             None => default::view(self),
             Some(DataView::Accelerometer) => acceleration::view(self),
             Some(DataView::Magnetometer) => magnetic_field::view(self),
+            Some(DataView::Temperature) => todo!(),
         })
         .width(Length::Fill)
         .height(Length::Fill)
