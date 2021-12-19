@@ -27,8 +27,8 @@ impl PlaceholderInstrument {
 }
 
 fn instrument_view<'s, V: View, E: Into<Element<'s, InstrumentMessage>> + 's>(
-    button_state: &'s mut button::State,
     content: E,
+    button_state: &'s mut button::State,
 ) -> Element<'s, InstrumentMessage> {
     Button::new(button_state, content)
         .width(Length::Fill)

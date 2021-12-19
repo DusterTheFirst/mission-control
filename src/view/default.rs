@@ -93,10 +93,10 @@ fn left_column<'app>(
         .spacing(10)
         .push(
             magnetic_field_time
-                .view(time, time_base)
+                .view(time, time_base, false)
                 .map(Message::Instrument),
         )
-        .push(magnetic_field_vector.view_alt().map(Message::Instrument))
+        .push(magnetic_field_vector.view(false).map(Message::Instrument))
         .push(PlaceholderInstrument::view().map(Message::Instrument))
         .push(PlaceholderInstrument::view().map(Message::Instrument))
         .into()
@@ -114,10 +114,10 @@ fn right_column<'app>(
         .spacing(10)
         .push(
             acceleration_time
-                .view(time, time_base)
+                .view(time, time_base,false)
                 .map(Message::Instrument),
         )
-        .push(acceleration_vector.view().map(Message::Instrument))
+        .push(acceleration_vector.view(false).map(Message::Instrument))
         .push(PlaceholderInstrument::view().map(Message::Instrument))
         .push(PlaceholderInstrument::view().map(Message::Instrument))
         .into()

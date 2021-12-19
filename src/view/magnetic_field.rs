@@ -23,7 +23,7 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
                     Container::new(
                         app.instruments
                             .magnetic_field_vector
-                            .view_alt()
+                            .view(true)
                             .map(Message::Instrument),
                     )
                     .width(Length::FillPortion(2))
@@ -34,7 +34,7 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
         .push(
             app.instruments
                 .magnetic_field_time
-                .view(&app.time, app.time_base)
+                .view(&app.time, app.time_base,true)
                 .map(Message::Instrument),
         )
         .into()

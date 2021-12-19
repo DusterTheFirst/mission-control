@@ -171,17 +171,13 @@ impl Application for InstrumentCluster {
                         self.instruments
                             .magnetic_field_time
                             .add_reading(time, reading);
-                        self.instruments
-                            .magnetic_field_vector
-                            .set_reading(time, reading);
+                        self.instruments.magnetic_field_vector.set_reading(reading);
                     }
                     PacketDownData::Accelerometer(reading) => {
                         self.instruments
                             .acceleration_time
                             .add_reading(time, reading);
-                        self.instruments
-                            .acceleration_vector
-                            .set_reading(time, reading);
+                        self.instruments.acceleration_vector.set_reading(reading);
                     }
                     PacketDownData::Hello(vehicle_identification) => {
                         self.vehicle.replace(vehicle_identification);

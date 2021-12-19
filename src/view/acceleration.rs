@@ -23,7 +23,7 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
                     Container::new(
                         app.instruments
                             .acceleration_vector
-                            .view()
+                            .view(true)
                             .map(Message::Instrument),
                     )
                     .width(Length::FillPortion(2))
@@ -34,7 +34,7 @@ pub fn view(app: &mut InstrumentCluster) -> Element<Message> {
         .push(
             app.instruments
                 .acceleration_time
-                .view(&app.time, app.time_base)
+                .view(&app.time, app.time_base, true)
                 .map(Message::Instrument),
         )
         .into()

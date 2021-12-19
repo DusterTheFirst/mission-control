@@ -33,15 +33,17 @@ impl<V: View> TimeSeriesInstrument<V> {
         &'s mut self,
         time_manager: &'s TimeManager,
         time_base: TimeBase,
+        big: bool,
     ) -> Element<'s, InstrumentMessage> {
         instrument_view::<V, _>(
-            &mut self.button_state,
             ChartWidget::new(TimeSeriesInstrumentView::<V> {
                 time_manager,
                 time_base,
                 readings: &self.readings,
                 width: self.width,
+                big,
             }),
+            &mut self.button_state,
         )
     }
 
@@ -71,6 +73,8 @@ impl<V: View> TimeSeriesInstrument<V> {
 pub struct TimeSeriesInstrumentView<'i, V: View> {
     readings: &'i VecDeque<(VehicleTime, V::Reading)>,
     width: f64,
+
+    big: bool,
 
     time_manager: &'i TimeManager,
     time_base: TimeBase,
@@ -177,13 +181,15 @@ impl<'i, V: View> Chart<InstrumentMessage> for TimeSeriesInstrumentView<'i, V> {
                 });
         }
 
-        chart
-            .configure_series_labels()
-            .position(SeriesLabelPosition::UpperRight)
-            .label_font(axis_label_style)
-            .background_style(style::colors::SURFACE) // TODO:
-            .border_style(style::colors::BORDER)
-            .draw()
-            .expect("failed to draw time series labels");
+        if self.big {
+            chart
+                .configure_series_labels()
+                .position(SeriesLabelPosition::UpperRight)
+                .label_font(axis_label_style)
+                .background_style(style::colors::SURFACE) // TODO:
+                .border_style(style::colors::BORDER)
+                .draw()
+                .expect("failed to draw time series labels");
+        }
     }
 }
